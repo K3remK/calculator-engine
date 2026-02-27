@@ -1,0 +1,2 @@
+we need a parser to parse a equation into tokens
+and execute the calculations in the right order
