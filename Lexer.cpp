@@ -2,7 +2,7 @@
 // Created by kerem on 2/28/26.
 //
 
-#include "Lexer.h"
+#include "Lexer.hpp"
 #include <cctype>
 #include "Util.hpp"
 
