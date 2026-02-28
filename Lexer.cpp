@@ -4,6 +4,8 @@
 
 #include "Lexer.hpp"
 #include <cctype>
+#include <iostream>
+
 #include "Util.hpp"
 
 std::vector<Token> Lexer::Tokenize(const std::string_view input_) {
@@ -39,13 +41,13 @@ std::vector<Token> Lexer::tokenizeCore() {
 
         switch (currentChar) {
             case '+':
-                tokens.emplace_back(Add);
+                tokens.emplace_back(Token(Add));
                 break;
             case '-':
                 tokens.emplace_back(Sub);
                 break;
             case '*':
-                tokens.emplace_back(Mul);
+                tokens.emplace_back(Token(Mul));
                 break;
             case '/':
                 tokens.emplace_back(Div);
@@ -58,6 +60,9 @@ std::vector<Token> Lexer::tokenizeCore() {
                 break;
             case ')':
                 tokens.emplace_back(RightParen);
+                break;
+            case ',':
+                tokens.emplace_back(Comma);
                 break;
             default:
                 // ! if we are here it means that we have a symbol that is not defined yet
@@ -77,7 +82,6 @@ Token Lexer::tokenizeNumber() {
     }
 
     const std::string_view raw = input.substr(start, cursor - start);
-
     return Token(Number, std::stod(std::string(raw)));
 }
 

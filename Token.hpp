@@ -5,25 +5,32 @@
 #include <complex>
 #include <unordered_map>
 #include <functional>
+#include <cmath>
+#include <iomanip>
+#include <cstdint>
 
-enum TokenType
-{
-    Add =           0b000000000000001,
-    Sub =           0b000000000000010,
-    Mul =           0b000000000000100,
-    Div =           0b000000000001000,
-    Pow =           0b000000000010000,
-    Min =           0b000000000100000,
-    Max =           0b000000001000000,
-    Sin =           0b000000010000000,
-    Cos =           0b000000100000000,
-    Tan =           0b000001000000000,
-    Cot =           0b000010000000000,
-    Sqrt =          0b000100000000000,
-    Number =        0b001000000000000,
-    LeftParen =     0b010000000000000,
-    RightParen =    0b100000000000000,
+enum TokenType : uint32_t {
+    Add        = 1 << 0,  // 1
+    Sub        = 1 << 1,  // 2
+    Mul        = 1 << 2,  // 4
+    Div        = 1 << 3,  // 8
+    Pow        = 1 << 4,  // 16
+    Min        = 1 << 5,  // 32
+    Max        = 1 << 6,  // 64
+    Sin        = 1 << 7,  // 128
+    Cos        = 1 << 8,  // 256
+    Tan        = 1 << 9,  // 512
+    Cot        = 1 << 10, // 1024
+    Sqrt       = 1 << 11, // 2048
+    Number     = 1 << 12,
+    LeftParen  = 1 << 13,
+    RightParen = 1 << 14,
+    Comma      = 1 << 15
 };
+
+// ! Trigonometric functions expects degrees not radians
+
+constexpr uint32_t MathFunctions = (Sin | Cos | Tan | Cot | Sqrt | Max | Min);
 
 using UnaryFunc = std::function<double(double)>;
 using BinaryFunc = std::function<double(double, double)>;
@@ -44,26 +51,30 @@ static inline const std::unordered_map<TokenType, OperatorInfo> operatorMap = {
     {Pow , {2, false, BinaryFunc([](const double a, const double b) { return std::pow(a, b); })}},
     {Min , {3, false, VariadicFunc([](const std::vector<double>& v){
         if (v.empty()) return 0.0;   // ! mabe throwing an exception would be better
-        //* std::min_element returns a pointer to the min element in the vector 
+        //* std::min_element returns a pointer to the min element in the vector
         return static_cast<double>(*std::min_element(v.begin(), v.end()));
     })}},
     {Max , {3, true, VariadicFunc([](const std::vector<double>& v) {
         if (v.empty()) return 0.0;   // ! again throw an error when a global exception handler is implemented
         return static_cast<double>(*std::max_element(v.begin(), v.end()));
     })}},
-    {Sin , {3, false, UnaryFunc([](double a) { return std::sin(a); })}},
-    {Cos , {3, false, UnaryFunc([](double a) { return std::cos(a); })}},
-    {Tan , {3, false, UnaryFunc([](double a) { return std::tan(a); })}},
-    {Cot , {3, false, UnaryFunc([](double a) { return 1 / std::tan(a); })}},
+    {Sin , {3, false, UnaryFunc([](double a) { return std::sin(a * M_PI / 180.0); })}},
+    {Cos , {3, false, UnaryFunc([](double a) { return std::cos(a * M_PI / 180.0); })}},
+    {Tan , {3, false, UnaryFunc([](double a) { return std::tan(a * M_PI / 180.0); })}},
+    {Cot , {3, false, UnaryFunc([](double a) { return 1 / std::tan(a * M_PI / 180.0); })}},
     {Sqrt , {3, false, UnaryFunc([](double a) { return std::sqrt(a); })}},
 };
+
+#include <iostream>
 
 struct Token {
     TokenType type;
     double literalValue = 0;
+    // ? can be even a vector in the future for multidimensional calculations
+    std::size_t argc = 0;
 
     explicit Token(const TokenType type, const double literalValue = 0)
-        : type(type), literalValue(literalValue) 
+        : type(type), literalValue(literalValue)
     {
     }
 
@@ -118,7 +129,7 @@ struct Token {
                 os << "sqrt";
                 break;
             case Number   :
-                os << token.literalValue;
+                os << std::setprecision(9) << token.literalValue;
                 break;
             case LeftParen :
                 os << "(";

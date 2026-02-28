@@ -7,6 +7,8 @@ add_executable(calculator-backend
         Lexer.hpp
         Parser.cpp
         Parser.hpp
+        Evaluator.cpp
+        Evaluator.hpp
 )
 
 include(CTest)
