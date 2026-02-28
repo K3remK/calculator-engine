@@ -1,3 +1,2 @@
-we need a parser to parse a equation into tokens
-and execute the calculations in the right order
-
+// TODO: convert the parsed tokens into postfix form from infix using shunting-yard algo
+// TODO: execute the converted postfix form tokens and calculate the result
