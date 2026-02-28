@@ -3,7 +3,8 @@ project(calculator-backend VERSION 0.1.0 LANGUAGES C CXX)
 
 add_executable(calculator-backend 
                 main.cpp
-                Parser.cpp
+                Lexer.cpp
+        Lexer.h
 )
 
 include(CTest)

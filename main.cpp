@@ -1,19 +1,16 @@
 #include <iostream>
 #include <sstream>
 
-#include "Parser.hpp"
+#include "Lexer.h"
 #include "Util.hpp"
 
 int main()
 {
-    std::string s = " ( 31  + 5)  *   1023   ";
-    Parser p;
-    std::vector<Token> tokens = p.Parse(s);
-    // std::size_t index = 1;
-    // std::cout << util::get_number(s, index) << ", index: " << index << std::endl;
+    std::string s = " (  31  /  5  )  *  1023 12  ";
+
+    const std::vector<Token> tokens = Lexer::Tokenize(s);
 
     for (auto &t : tokens)
         std::cout << t << std::endl;
-
     return 0;
 }

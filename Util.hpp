@@ -5,28 +5,23 @@
 
 namespace util
 {
-    static inline bool is_digit(char c)
+    static double get_number(const std::string_view &str, std::size_t &index)
     {
-        return ('0' <= c && '9' >= c);
+        const std::size_t start = index;
+        while (index < str.length() && (std::isdigit(str[index]) || str[index++] == '.'))
+        {
+            index++;
+        }
+        const std::string_view s = str.substr(start, index - start);
+        return std::stod(std::string(s));
     }
 
-    static inline double get_number(const std::string &str, std::size_t &index)
-    {
-        double number = 0;
-        while (is_digit(str[index]))
-        {
-            int digit = static_cast<int>(str[index++] - '0');
-            number *= 10;
-            number += digit;
-        }
-        if (str[index++] == '.')
-        {
-            std::size_t tmp = index;
-            double afterDecimal = get_number(str, index);
-            double div = std::pow(10, index - tmp);
-            number += (afterDecimal / div);
+    static const std::string& get_string(const std::string_view &str, std::size_t &index) {
+        auto word = "";
+        while (std::isalpha(str[index])) {
+            word += str[index++];
         }
         index -= 2;
-        return number;
+        return word;
     }
 }

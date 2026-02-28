@@ -1,84 +1,84 @@
 #pragma once
 
 #include <variant>
-#include <map>
 #include <ostream>
+#include <iostream>
+#include <array>
+#include <complex>
+#include <unordered_map>
+#include <functional>
 
-enum class TokenType
+enum TokenType
 {
-    Addition,
-    Subtraction,
-    Multiplication,
-    Division,
-    Exponentiation,
-    Parentheses,
-    Number
+    Add ,
+    Sub ,
+    Mul ,
+    Div ,
+    Pow ,
+    Min ,
+    Max ,
+    Sin ,
+    Cos ,
+    Tan ,
+    Cot ,
+    Sqrt,
+    Number,
+    LeftParen,
+    RightParen,
 };
 
-/*
-Precedence:
-    addition = 0, subraction = 0,
-    multiplication = division = 1,
-    exponentiation = 2,
-    parentheses = 3
-*/
+using UnaryFunc = std::function<double(double)>;
+using BinaryFunc = std::function<double(double, double)>;
+using VariadicFunc = std::function<double(const std::vector<double>&)>;
 
-union Value
-{
-    double number;
-    char op;
-};
 
-struct Token
-{
-    TokenType type;
-    Value value;
+struct OperatorInfo {
     int precedence;
+    bool isLeftAssociative;
+    std::variant<UnaryFunc, BinaryFunc, VariadicFunc> action;
+};
 
-    Token() = default;
+static inline const std::unordered_map<TokenType, OperatorInfo> operatorMap = {
+    {Add , {0, true, BinaryFunc(std::plus<double>{})}},
+    {Sub , {0, true, BinaryFunc(std::minus<double>{})}},
+    {Mul , {1, true, BinaryFunc(std::multiplies<double>{})}},
+    {Div , {1, true, BinaryFunc(std::divides<double>{})}},
+    {Pow , {2, true, BinaryFunc([](const double a, const double b) { return std::pow(a, b); })}},
+    {Min , {3, true, VariadicFunc([](const std::vector<double>& v){
+        if (v.empty()) return 0.0;   // ! mabe throwing an exception would be better
+        //* std::min_element returns a pointer to the min element in the vector 
+        return static_cast<double>(*std::min_element(v.begin(), v.end()));
+    })}},
+    {Max , {3, true, VariadicFunc([](const std::vector<double>& v) {
+        if (v.empty()) return 0.0;   // ! again throw an error when a global exception handler is implemented
+        return static_cast<double>(*std::max_element(v.begin(), v.end()));
+    })}},
+    {Sin , {3, false, UnaryFunc([](double a) { return std::sin(a); })}},
+    {Cos , {3, false, UnaryFunc([](double a) { return std::cos(a); })}},
+    {Tan , {3, false, UnaryFunc([](double a) { return std::tan(a); })}},
+    {Cot , {3, false, UnaryFunc([](double a) { return 1 / std::tan(a); })}},
+    {Sqrt , {3, false, UnaryFunc([](double a) { return std::sqrt(a); })}},
+};
 
-    Token(char type_)
+struct Token {
+    TokenType type;
+    double literalValue = 0;
+
+    explicit Token(const TokenType type, const double literalValue = 0)
+        : type(type), literalValue(literalValue) 
     {
-        this->type = typeMapper.at(type_);
-        value.op = type_;
+
     }
 
-    Token(double number)
-    {
-        type = TokenType::Number;
-        value.number = number;
+    [[nodiscard]] const OperatorInfo& GetOperatorInfo() const {
+        return operatorMap.at(type);
     }
 
-    friend std::ostream &operator<<(std::ostream &os, const Token &t)
-    {
-        if (t.type == TokenType::Number)
-        {
-            os << "Token: " << t.value.number;
+    friend std::ostream& operator<<(std::ostream& os, const Token& token) {
+        os << token.type;
+        if (token.literalValue != 0) {
+            os << " Value: " << token.literalValue;
         }
-        else
-        {
-            os << "Token: " << (t.value.op);
-        }
-
         return os;
     }
-
-private:
-    std::map<char, int> precedenceMapper = {
-        {'+', 0},
-        {'-', 0},
-        {'/', 1},
-        {'*', 1},
-        {'^', 2},
-        {'(', 3},
-        {')', 3}};
-    std::map<char, TokenType> typeMapper = {
-        {'+', TokenType::Addition},
-        {'-', TokenType::Subtraction},
-        {'*', TokenType::Multiplication},
-        {'/', TokenType::Division},
-        {'^', TokenType::Exponentiation},
-        {'(', TokenType::Parentheses},
-        {')', TokenType::Parentheses},
-        {'N', TokenType::Number}};
 };
