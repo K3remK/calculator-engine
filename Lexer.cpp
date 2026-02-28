@@ -4,7 +4,6 @@
 
 #include "Lexer.hpp"
 #include <cctype>
-#include <iostream>
 
 #include "Util.hpp"
 
@@ -41,14 +40,17 @@ std::vector<Token> Lexer::tokenizeCore() {
 
         switch (currentChar) {
             case '+':
-                tokens.emplace_back(Token(Add));
+                tokens.emplace_back(Add);
                 break;
             case '-':
                 tokens.emplace_back(Sub);
                 break;
             case '*':
-                tokens.emplace_back(Token(Mul));
+                tokens.emplace_back(Mul);
                 break;
+            //case '%':
+            //    tokens.emplace_back(Mod);
+            //    break;
             case '/':
                 tokens.emplace_back(Div);
                 break;
@@ -65,9 +67,8 @@ std::vector<Token> Lexer::tokenizeCore() {
                 tokens.emplace_back(Comma);
                 break;
             default:
-                // ! if we are here it means that we have a symbol that is not defined yet
-                // ! throw a runtime error to be caught in the global exception handler
-                break;
+                //* Unknown symbol
+                throw std::invalid_argument("Invalid symbol: " + std::string(1, currentChar));
         }
         cursor++;
     }
@@ -93,6 +94,12 @@ Token Lexer::tokenizeIdentifier() {
     }
 
     const std::string_view raw = input.substr(start, cursor - start);
-
-    return Token(typeMapper.at(raw));
+    try {
+        const auto type = typeMapper.at(std::string(raw));
+        if (type == PI)
+            return Token(PI, M_PI);
+        return Token(type);
+    } catch (const std::out_of_range& e) {
+        throw std::out_of_range("Invalid identifier: " + std::string(raw));
+    }
 }

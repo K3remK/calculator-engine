@@ -109,7 +109,7 @@ cmake -B build -S .
 cmake --build build
 
 # Run the calculator
-./build/calculator-backend
+./build/calculator-engine
 ```
 
 ### Example Output

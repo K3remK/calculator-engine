@@ -25,15 +25,21 @@ enum TokenType : uint32_t {
     Number     = 1 << 12,
     LeftParen  = 1 << 13,
     RightParen = 1 << 14,
-    Comma      = 1 << 15
+    Comma      = 1 << 15,
+    Mod        = 1 << 16,
+    PI         = 1 << 17,
 };
 
 // ! Trigonometric functions expects degrees not radians
 
 constexpr uint32_t MathFunctions = (Sin | Cos | Tan | Cot | Sqrt | Max | Min);
+constexpr uint32_t Numbers = Number | PI;
+
 
 using UnaryFunc = std::function<double(double)>;
+
 using BinaryFunc = std::function<double(double, double)>;
+
 using VariadicFunc = std::function<double(const std::vector<double>&)>;
 
 
@@ -44,28 +50,39 @@ struct OperatorInfo {
 };
 
 static inline const std::unordered_map<TokenType, OperatorInfo> operatorMap = {
-    {Add , {0, true, BinaryFunc(std::plus<double>{})}},
-    {Sub , {0, true, BinaryFunc(std::minus<double>{})}},
-    {Mul , {1, true, BinaryFunc(std::multiplies<double>{})}},
-    {Div , {1, true, BinaryFunc(std::divides<double>{})}},
+    {Add , {0, true,  BinaryFunc(std::plus<double>{})}},
+    {Sub , {0, true,  BinaryFunc(std::minus<double>{})}},
+    {Mod,  {1,  true, BinaryFunc([](const double a, const double b) {
+        if (b == 0)
+            throw std::invalid_argument("Modulus by 0");
+        return std::fmod(a, b);
+    })}},
+    {Mul , {1, true,  BinaryFunc(std::multiplies<double>{})}},
+    {Div , {1, true,  BinaryFunc(std::divides<double>{})}},
     {Pow , {2, false, BinaryFunc([](const double a, const double b) { return std::pow(a, b); })}},
     {Min , {3, false, VariadicFunc([](const std::vector<double>& v){
-        if (v.empty()) return 0.0;   // ! mabe throwing an exception would be better
+        if (v.empty())
+            throw std::invalid_argument("Empty Function : Min");
         //* std::min_element returns a pointer to the min element in the vector
         return static_cast<double>(*std::min_element(v.begin(), v.end()));
     })}},
     {Max , {3, true, VariadicFunc([](const std::vector<double>& v) {
-        if (v.empty()) return 0.0;   // ! again throw an error when a global exception handler is implemented
+        if (v.empty())
+            throw std::invalid_argument("Empty Function : Max");
         return static_cast<double>(*std::max_element(v.begin(), v.end()));
     })}},
-    {Sin , {3, false, UnaryFunc([](double a) { return std::sin(a * M_PI / 180.0); })}},
-    {Cos , {3, false, UnaryFunc([](double a) { return std::cos(a * M_PI / 180.0); })}},
-    {Tan , {3, false, UnaryFunc([](double a) { return std::tan(a * M_PI / 180.0); })}},
-    {Cot , {3, false, UnaryFunc([](double a) { return 1 / std::tan(a * M_PI / 180.0); })}},
-    {Sqrt , {3, false, UnaryFunc([](double a) { return std::sqrt(a); })}},
+    {Sin , {3, false, UnaryFunc([](const double a) { return std::sin(a * M_PI / 180.0); })}},
+    {Cos , {3, false, UnaryFunc([](const double a) { return std::cos(a * M_PI / 180.0); })}},
+    {Tan , {3, false, UnaryFunc([](const double a) { return std::tan(a * M_PI / 180.0); })}},
+    {Cot , {3, false, UnaryFunc([](const double a) {
+        const double tmp = std::tan(a * M_PI / 180.0);
+        if (tmp == 0.0)
+            throw std::invalid_argument("Tan : " + std::to_string(a));
+        return 1 / tmp;
+    })}},
+    {Sqrt , {3, false, UnaryFunc([](const double a) { return std::sqrt(a); })}},
 };
 
-#include <iostream>
 
 struct Token {
     TokenType type;
@@ -136,6 +153,15 @@ struct Token {
                 break;
             case RightParen:
                 os << ")";
+                break;
+            case Comma:
+                os << ",";
+                break;
+            case Mod:
+                os << "mod";
+                break;
+            case PI:
+                os << "π";
                 break;
         }
         return os;

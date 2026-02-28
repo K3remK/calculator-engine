@@ -23,6 +23,8 @@ static inline const std::unordered_map<std::string_view, TokenType> typeMapper =
     {"tan", Tan},
     {"cot", Cot},
     {"sqrt", Sqrt},
+    {"mod", Mod},
+    {"pi", PI},
     {",", Comma}
 };
 

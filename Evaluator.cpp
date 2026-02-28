@@ -11,7 +11,7 @@ double Evaluator::Evaluate(const std::vector<Token> &postfixTokens) {
     std::stack<Token> stack;
 
     for (const auto& token : postfixTokens) {
-        if (token.type == Number)
+        if (token.type & Numbers)
             stack.push(token);
         else {
             auto actionVariant = token.GetOperatorInfo().action;

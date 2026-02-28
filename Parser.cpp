@@ -10,17 +10,21 @@
 
 std::vector<Token> Parser::ToPostfix(const std::vector<Token>& infixTokens) {
     auto stack = std::stack<Token>();
-    auto argcStack = std::stack<std::size_t>();
+    auto argcStack = std::stack<int>();
 
     std::vector<Token> queue;
     std::size_t index = 0;
-    // ! Currently this algorithm does not take into account of the existence
-    // ! of variable number functions such as min or max.
     while (index < infixTokens.size()) {
         const auto& token = infixTokens[index];
 
-        if (token.type == Number) {
+        if (token.type & Numbers) {
             queue.emplace_back(token);
+            if (!argcStack.empty()) {
+                // Increment the argument count for the current variadic function
+                const std::size_t argc = argcStack.top();
+                argcStack.pop();
+                argcStack.push(argc + 1);
+            }
         }
         else if (token.type & MathFunctions) {
             stack.push(token);
@@ -47,7 +51,7 @@ std::vector<Token> Parser::ToPostfix(const std::vector<Token>& infixTokens) {
             // If the token before the parentheses was a function, pop it to the queue
             if (!stack.empty() && (stack.top().type & MathFunctions)) {
                 auto t = stack.top();
-                t.argc = argcStack.top() + 1;
+                t.argc = argcStack.top();
                 argcStack.pop();
                 queue.emplace_back(t);
                 stack.pop();
@@ -58,11 +62,6 @@ std::vector<Token> Parser::ToPostfix(const std::vector<Token>& infixTokens) {
                 queue.emplace_back(stack.top());
                 stack.pop();
             }
-
-            // Increment the argument count for the current variadic function
-            const std::size_t argc = argcStack.top();
-            argcStack.pop();
-            argcStack.push(argc + 1);
         }
         else {
             // Default block: This means the token is an operator (+, -, * etc.)
@@ -76,13 +75,12 @@ std::vector<Token> Parser::ToPostfix(const std::vector<Token>& infixTokens) {
             }
             stack.push(token);
         }
-
         index++;
     }
 
     while (!stack.empty()) {
         if (stack.top().type & (LeftParen | RightParen)) {
-            // ! There are mis matched parentheses in the input
+            throw std::runtime_error("Mismatched parentheses");
         }
         assert(stack.top().type != LeftParen);
         queue.emplace_back(stack.top());
