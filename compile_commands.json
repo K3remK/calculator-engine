@@ -1,8 +1,0 @@
-[
-{
-  "directory": "/home/kerem/Desktop/dev/calculator-backend/build",
-  "command": "/usr/bin/c++   -g -o CMakeFiles/calculator-backend.dir/main.cpp.o -c /home/kerem/Desktop/dev/calculator-backend/main.cpp",
-  "file": "/home/kerem/Desktop/dev/calculator-backend/main.cpp",
-  "output": "CMakeFiles/calculator-backend.dir/main.cpp.o"
-}
-]

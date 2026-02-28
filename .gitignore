@@ -1,1 +1,13 @@
+.cmake/
+.vscode/
+cmake-build-debug/
+CMakeFiles/
+Testing/
 build/
+.idea/
+
+CMakeCache.txt
+*.cmake
+*.tcl
+compile_commands.json
+calculator-backend
