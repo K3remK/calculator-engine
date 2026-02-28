@@ -9,6 +9,9 @@
 int main()
 {
     const std::vector<std::string> infixEq = {
+        "(80*20%)!",
+        "(4!+10)!",
+        "sin(5)+100",
         "3*pi/2",
         "100 mod 13",
         "min(100)",

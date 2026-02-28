@@ -28,12 +28,15 @@ enum TokenType : uint32_t {
     Comma      = 1 << 15,
     Mod        = 1 << 16,
     PI         = 1 << 17,
+    Fact       = 1 << 18,
+    Percent    = 1 << 19,
 };
 
 // ! Trigonometric functions expects degrees not radians
 
-constexpr uint32_t MathFunctions = (Sin | Cos | Tan | Cot | Sqrt | Max | Min);
+constexpr uint32_t MathFunctions = Sin | Cos | Tan | Cot | Sqrt | Max | Min | Fact;
 constexpr uint32_t Numbers = Number | PI;
+constexpr uint32_t Postfix = Fact | Percent;
 
 
 using UnaryFunc = std::function<double(double)>;
@@ -71,6 +74,17 @@ static inline const std::unordered_map<TokenType, OperatorInfo> operatorMap = {
             throw std::invalid_argument("Empty Function : Max");
         return static_cast<double>(*std::max_element(v.begin(), v.end()));
     })}},
+{Percent, {3, false, UnaryFunc([](const double a) { return a / 100.0; })}},
+    {Fact, {3, false, UnaryFunc([](double a) {
+        if (a == 0) return 1.0;
+        if (static_cast<int>(a) != a) throw std::invalid_argument("Factorial supports only integers : " + std::to_string(a));
+        double x = 1;
+        while (a != 1) {
+            x *= a;
+            a -= 1.0;
+        }
+        return x;
+    })}},
     {Sin , {3, false, UnaryFunc([](const double a) { return std::sin(a * M_PI / 180.0); })}},
     {Cos , {3, false, UnaryFunc([](const double a) { return std::cos(a * M_PI / 180.0); })}},
     {Tan , {3, false, UnaryFunc([](const double a) { return std::tan(a * M_PI / 180.0); })}},
@@ -107,8 +121,9 @@ struct Token {
         return operatorMap.at(type);
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const Token& token) {
-        switch (token.type) {
+    [[nodiscard]] std::string toString() const {
+        std::ostringstream os;
+        switch (type) {
             case Add      :
                 os << "+";
                 break;
@@ -146,7 +161,7 @@ struct Token {
                 os << "sqrt";
                 break;
             case Number   :
-                os << std::setprecision(9) << token.literalValue;
+                os << std::setprecision(9) << literalValue;
                 break;
             case LeftParen :
                 os << "(";
@@ -163,7 +178,18 @@ struct Token {
             case PI:
                 os << "π";
                 break;
+            case Fact:
+                os << "!";
+                break;
+            case Percent:
+                os << "%";
+                break;
         }
+        return os.str();
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const Token& token) {
+        os << token.toString();
         return os;
     }
 };

@@ -48,9 +48,9 @@ std::vector<Token> Lexer::tokenizeCore() {
             case '*':
                 tokens.emplace_back(Mul);
                 break;
-            //case '%':
-            //    tokens.emplace_back(Mod);
-            //    break;
+            case '%':
+                tokens.emplace_back(Percent);
+                break;
             case '/':
                 tokens.emplace_back(Div);
                 break;
@@ -65,6 +65,9 @@ std::vector<Token> Lexer::tokenizeCore() {
                 break;
             case ',':
                 tokens.emplace_back(Comma);
+                break;
+            case '!':
+                tokens.emplace_back(Fact);
                 break;
             default:
                 //* Unknown symbol

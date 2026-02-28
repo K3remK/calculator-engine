@@ -15,10 +15,20 @@ std::vector<Token> Parser::ToPostfix(const std::vector<Token>& infixTokens) {
     std::vector<Token> queue;
     std::size_t index = 0;
     while (index < infixTokens.size()) {
-        const auto& token = infixTokens[index];
+        //* Postfix operators like '%', '!' etc. are treated as numbers
+        if (const auto& token = infixTokens[index]; token.type & Numbers || token.type & Postfix) {
+            if (token.type == Number) {
+                if ((index > 0 && infixTokens[index-1].type & (Numbers | Postfix | RightParen)) ||
+                (index < infixTokens.size()-1 && infixTokens[index+1].type & (Numbers | LeftParen)))
+                //* there is a number or Postfix operator that doesnt have anything to do with the equation
+                    throw std::runtime_error("Invalid token: " + token.toString());
+            }
 
-        if (token.type & Numbers) {
             queue.emplace_back(token);
+            if (token.type & Postfix && !(infixTokens[index-1].type & (Number | RightParen))) {
+                //* Invalid usage of postfix operators !5 or %8 for example
+                throw std::runtime_error("Invalid postfix operator usage: " + token.toString());
+            }
             if (!argcStack.empty()) {
                 // Increment the argument count for the current variadic function
                 const std::size_t argc = argcStack.top();
