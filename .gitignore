@@ -11,3 +11,4 @@ CMakeCache.txt
 *.tcl
 compile_commands.json
 calculator-backend
+Makefile
