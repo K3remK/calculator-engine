@@ -7,6 +7,9 @@
 #include <type_traits>
 #include <variant>
 
+
+
+
 double Evaluator::Evaluate(const std::vector<Token> &postfixTokens) {
     std::stack<Token> stack;
 
@@ -14,6 +17,18 @@ double Evaluator::Evaluate(const std::vector<Token> &postfixTokens) {
         if (token.type & Numbers)
             stack.push(token);
         else {
+
+
+            // TODO seperate the validation and execution logic
+            if (token.type & MathFunctions) {  //* one of the math functions but not unary minus
+                //* if the current token is a function and doesn't have any argument -> throw an error
+                if (token.argc == 0)
+                    throw std::runtime_error("Invalid usage of function: " + token.toString());
+                //* if the current function is a unary func and have more than 1 argument -> throw error
+                if (token.type & UnaryFunctions && token.argc > 1)
+                    throw std::runtime_error("Wrong argument count for unary func: " + token.toString() + ", argc: " + std::to_string(token.argc));
+            }
+
             auto actionVariant = token.GetOperatorInfo().action;
 
             //* identify the type of function that the operator have

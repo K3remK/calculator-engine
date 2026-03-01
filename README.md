@@ -188,7 +188,7 @@ Result: 20
 ## 🛣️ Roadmap
 
 - [ ] Global exception handler for malformed expressions
-- [ ] Support for negative numbers and unary minus
+- [x] Support for negative numbers and unary minus
 - [ ] Additional functions (`log`, `ln`, `abs`, `factorial`)
 - [ ] Variable support (`x = 5; 2*x + 3`)
 - [ ] Interactive REPL mode

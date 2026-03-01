@@ -30,13 +30,20 @@ enum TokenType : uint32_t {
     PI         = 1 << 17,
     Fact       = 1 << 18,
     Percent    = 1 << 19,
+    UnaryMinus = 1 << 20,
+    UnaryPlus  = 1 << 21,
 };
+
+// ! When you add a new function or operator !!!! Dont forget to update the IsOperator and IsFunction functions
 
 // ! Trigonometric functions expects degrees not radians
 
-constexpr uint32_t MathFunctions = Sin | Cos | Tan | Cot | Sqrt | Max | Min | Fact;
+constexpr uint32_t MathFunctions = Sin | Cos | Tan | Cot | Sqrt | Max | Min;
 constexpr uint32_t Numbers = Number | PI;
-constexpr uint32_t Postfix = Fact | Percent;
+constexpr uint32_t PostfixOperators = Fact | Percent;
+constexpr uint32_t Operators = Add | Sub | Mul | Div | Max | UnaryMinus | UnaryPlus;
+constexpr uint32_t InfixOperators = Add | Sub | Mul | Div | Pow;
+constexpr uint32_t UnaryFunctions = Sin | Cos | Tan | Cot | Sqrt;
 
 
 using UnaryFunc = std::function<double(double)>;
@@ -85,6 +92,8 @@ static inline const std::unordered_map<TokenType, OperatorInfo> operatorMap = {
         }
         return x;
     })}},
+    {UnaryMinus, {3, false, UnaryFunc([](const double a) { return -a; })}},
+    { UnaryPlus, {3, false, UnaryFunc([](const double a) { return a; })}},
     {Sin , {3, false, UnaryFunc([](const double a) { return std::sin(a * M_PI / 180.0); })}},
     {Cos , {3, false, UnaryFunc([](const double a) { return std::cos(a * M_PI / 180.0); })}},
     {Tan , {3, false, UnaryFunc([](const double a) { return std::tan(a * M_PI / 180.0); })}},
@@ -99,8 +108,8 @@ static inline const std::unordered_map<TokenType, OperatorInfo> operatorMap = {
 
 
 struct Token {
-    TokenType type;
-    double literalValue = 0;
+    mutable TokenType type;
+    mutable double literalValue = 0;
     // ? can be even a vector in the future for multidimensional calculations
     std::size_t argc = 0;
 
@@ -110,7 +119,7 @@ struct Token {
     }
 
     [[nodiscard]] bool IsOperator() const {
-        return type & (Add | Sub | Mul | Div | Pow);
+        return type & (Add | Sub | Mul | Div | Pow | UnaryMinus | UnaryPlus);
     }
 
     [[nodiscard]] bool IsFunction() const {
@@ -183,6 +192,12 @@ struct Token {
                 break;
             case Percent:
                 os << "%";
+                break;
+            case UnaryMinus:
+                os << "-";
+                break;
+            case UnaryPlus:
+                os << "+";
                 break;
         }
         return os.str();
