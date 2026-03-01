@@ -101,6 +101,8 @@ Token Lexer::tokenizeIdentifier() {
         const auto type = typeMapper.at(std::string(raw));
         if (type == PI)
             return Token(PI, M_PI);
+        if (type == Euler)
+            return Token(Euler, M_E);
         return Token(type);
     } catch (const std::out_of_range& e) {
         throw std::out_of_range("Invalid identifier: " + std::string(raw));

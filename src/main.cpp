@@ -9,6 +9,7 @@
 int main()
 {
     const std::vector<std::string> infixEq = {
+        "e^2*ln(e*2)",
         "log(10)",
         "sqrt(ln(10)*10)",
         "logbase(10, 2)",

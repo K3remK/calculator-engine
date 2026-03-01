@@ -36,13 +36,14 @@ enum TokenType : uint32_t {
     Ln         = 1 << 23,
     LogBase    = 1 << 24,
     Abs        = 1 << 25,
+    Euler      = 1 << 26,
 };
 
 // ! When you add a new function or operator !!!! Dont forget to update the IsOperator and IsFunction functions
 // ! Trigonometric functions expects degrees not radians
 
 constexpr uint32_t MathFunctions = Sin | Cos | Tan | Cot | Sqrt | Max | Min | Log | Ln | LogBase | Abs;
-constexpr uint32_t Numbers = Number | PI;
+constexpr uint32_t Numbers = Number | PI | Euler;
 constexpr uint32_t PostfixOperators = Fact | Percent;
 constexpr uint32_t Operators = Add | Sub | Mul | Div | Max | UnaryMinus | UnaryPlus;
 constexpr uint32_t InfixOperators = Add | Sub | Mul | Div | Pow;
@@ -217,6 +218,9 @@ struct Token {
                 break;
             case Abs:
                 os << "abs";
+                break;
+            case Euler:
+                os << "e";
                 break;
         }
         return os.str();
