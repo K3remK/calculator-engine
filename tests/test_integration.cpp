@@ -1,0 +1,155 @@
+#include <gtest/gtest.h>
+#include "../src/Lexer.hpp"
+#include "../src/Parser.hpp"
+#include "../src/Evaluator.hpp"
+
+// Helper: full pipeline evaluation
+static double evaluate(const std::string& expr) {
+    auto tokens = Lexer::Tokenize(expr);
+    auto postfix = Parser::ToPostfix(tokens);
+    return Evaluator::Evaluate(postfix);
+}
+
+// ============================================================
+// Basic arithmetic — end-to-end
+// ============================================================
+
+TEST(Integration, BasicAddition) {
+    EXPECT_DOUBLE_EQ(evaluate("2 + 3"), 5.0);
+}
+
+TEST(Integration, PrecedenceMulOverAdd) {
+    EXPECT_DOUBLE_EQ(evaluate("2 + 3 * 4"), 14.0);
+}
+
+TEST(Integration, SubMulAdd) {
+    EXPECT_DOUBLE_EQ(evaluate("10 - 2 * 3 + 4"), 8.0);
+}
+
+TEST(Integration, DivisionAndMul) {
+    EXPECT_DOUBLE_EQ(evaluate("10 / 2 * 5"), 25.0);
+}
+
+// ============================================================
+// Parenthesized expressions
+// ============================================================
+
+// BUG DETECTED: Parser treats '*' after ')' as unary minus → result is -4 instead of 20.
+// This test asserts the CORRECT expected result and will FAIL until the bug is fixed.
+TEST(Integration, ParenthesesOverridePrecedence) {
+    EXPECT_DOUBLE_EQ(evaluate("(2 + 3) * 4"), 20.0);
+}
+
+TEST(Integration, DivisionWithParens) {
+    EXPECT_DOUBLE_EQ(evaluate("10 / (2 * 5)"), 1.0);
+}
+
+// BUG DETECTED: Same parser bug — operators after ')' become negation.
+// This test asserts the CORRECT expected result and will FAIL until the bug is fixed.
+TEST(Integration, NestedParentheses) {
+    EXPECT_DOUBLE_EQ(evaluate("((1 + 2) * 3) - 4"), 5.0);
+}
+
+// ============================================================
+// Modulus
+// ============================================================
+
+TEST(Integration, ModulusOperator) {
+    EXPECT_DOUBLE_EQ(evaluate("100 mod 13"), 9.0);
+}
+
+// BUG DETECTED: Parser bug — '*' after ')' is lost.
+// This test asserts the CORRECT expected result and will FAIL until the bug is fixed.
+TEST(Integration, ParenExpressionWithMod) {
+    // (2 + 3) * 4 mod 7 = 20 mod 7 = 6
+    EXPECT_DOUBLE_EQ(evaluate("(2 + 3) * 4 mod 7"), 6.0);
+}
+
+// ============================================================
+// Trigonometric functions (degrees)
+// ============================================================
+
+TEST(Integration, SinAndCos) {
+    // sin(0) + cos(0) = 0 + 1 = 1
+    EXPECT_NEAR(evaluate("sin(0) + cos(0)"), 1.0, 1e-9);
+}
+
+// BUG DETECTED: Parser treats '+' after ')' as unary minus → 100 becomes -100.
+// This test asserts the CORRECT expected result and will FAIL until the bug is fixed.
+TEST(Integration, SinPlusConstant) {
+    // sin(5) + 100 ≈ 100.087
+    double result = evaluate("sin(5) + 100");
+    EXPECT_NEAR(result, std::sin(5.0 * M_PI / 180.0) + 100.0, 1e-9);
+}
+
+// ============================================================
+// PI constant
+// ============================================================
+
+TEST(Integration, PiExpression) {
+    // 3 * pi / 2
+    double result = evaluate("3*pi/2");
+    EXPECT_NEAR(result, 3.0 * M_PI / 2.0, 1e-9);
+}
+
+// ============================================================
+// Power
+// ============================================================
+
+TEST(Integration, SimplePower) {
+    EXPECT_DOUBLE_EQ(evaluate("2 ^ 10"), 1024.0);
+}
+
+TEST(Integration, Pythagorean) {
+    // sqrt(3^2 + 4^2) = sqrt(9 + 16) = sqrt(25) = 5
+    EXPECT_NEAR(evaluate("sqrt(3^2 + 4^2)"), 5.0, 1e-9);
+}
+
+// ============================================================
+// Negation
+// ============================================================
+
+TEST(Integration, DoubleNegation) {
+    // 3 - (-3) + 1 = 7
+    EXPECT_DOUBLE_EQ(evaluate("3--3+1"), 7.0);
+}
+
+// ============================================================
+// Factorial and Percent
+// ============================================================
+
+TEST(Integration, FactorialExpression) {
+    // (80 * 20%)! = (80 * 0.2)! = 16! = 20922789888000
+    double result = evaluate("(80*20%)!");
+    EXPECT_DOUBLE_EQ(result, 20922789888000.0);
+}
+
+// ============================================================
+// Nested functions
+// ============================================================
+
+TEST(Integration, NestedMinMax) {
+    // sqrt(min(100, 200, 6, 29, max(5, 2, 4, 1)))
+    // max(5,2,4,1) = 5 → min(100, 200, 6, 29, 5) = 5 → sqrt(5)
+    double result = evaluate("sqrt(min(100, 200, 6, 29, max(5, 2, 4, 1)))");
+    EXPECT_NEAR(result, std::sqrt(5.0), 1e-9);
+}
+
+// BUG DETECTED: Parser treats '/' after ')' as unary minus → 5 becomes -5.
+// This test asserts the CORRECT expected result and will FAIL until the bug is fixed.
+TEST(Integration, SqrtDivision) {
+    // sqrt(16) / 5 = 4 / 5 = 0.8
+    EXPECT_DOUBLE_EQ(evaluate("sqrt(16) / 5"), 0.8);
+}
+
+// ============================================================
+// Single function calls
+// ============================================================
+
+TEST(Integration, MinSingleArg) {
+    EXPECT_DOUBLE_EQ(evaluate("min(100)"), 100.0);
+}
+
+TEST(Integration, MaxSingleArg) {
+    EXPECT_DOUBLE_EQ(evaluate("max(1)"), 1.0);
+}
