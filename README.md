@@ -44,7 +44,7 @@ Output:  5.0
 | **Arithmetic** | `+`  `-`  `*`  `/`  `^` (power)  `mod` (modulus) |
 | **Unary Operators** | `-` (negation)  `+` (identity) — e.g. `-3 + 1`, `10+---10`, `-sqrt(16)` |
 | **Trigonometry** | `sin`  `cos`  `tan`  `cot` *(expects degrees)* |
-| **Functions** | `sqrt`  `min`  `max` |
+| **Functions** | `sqrt`  `min`  `max`  `abs`  `log` (base 10)  `ln` (natural)  `logbase(value, base)` |
 | **Postfix Operators** | `!` (factorial)  `%` (percent) — e.g. `5!`, `80%` |
 | **Constants** | `pi` — Archimedes' constant (≈ 3.14159) |
 | **Variadic** | `min(1,2,3,...,n)`  `max(1,2,3,...,n)` — any number of arguments |
@@ -130,6 +130,10 @@ sqrt(3^2 + 4^2)                                      -> 3 2 ^ 4 2 ^ + sqrt  = 5
 (80*20%)!                                            -> 80 20 % * !  = 20922789888000
 100 mod 13                                           -> 100 13 mod  = 9
 3*pi/2                                               -> 3 π * 2 /  = 4.71238898
+log(100)                                             -> 100 log  = 2
+ln(1)                                                -> 1 ln  = 0
+abs(-5)                                              -> 5 - abs  = 5
+logbase(8, 2)                                        -> 8 2 logbase  = 3
 ```
 
 ---
@@ -156,11 +160,11 @@ cd build && ctest --output-on-failure
 
 | Test File | Module | Tests | Description |
 |---|---|---|---|
-| `test_token.cpp` | Token | 34 | Token type classification, operator info, `toString()`, and all `operatorMap` lambdas |
-| `test_lexer.cpp` | Lexer | 25 | Number/identifier tokenization, operators, whitespace, full expressions, error cases |
-| `test_parser.cpp` | Parser | 18 | Precedence, parentheses, power associativity, unary minus, functions, postfix ops, errors |
-| `test_evaluator.cpp` | Evaluator | 15 | Binary/unary/variadic ops, multi-step expressions, constants |
-| `test_integration.cpp` | End-to-End | 20 | Full pipeline (`Lexer → Parser → Evaluator`) for arithmetic, trig, negation, nesting |
+| `test_token.cpp` | Token | 47 | Token type classification, operator info, `toString()`, all `operatorMap` lambdas including log/ln/logbase/abs, and edge cases |
+| `test_lexer.cpp` | Lexer | 30 | Number/identifier tokenization, operators, whitespace, full expressions including log/ln/logbase/abs, error cases |
+| `test_parser.cpp` | Parser | 24 | Precedence, parentheses, power associativity, unary minus, functions including log/ln/logbase/abs, postfix ops, errors |
+| `test_evaluator.cpp` | Evaluator | 23 | Binary/unary/variadic ops, log/ln/logbase/abs evaluation, argc validation, multi-step expressions, constants |
+| `test_integration.cpp` | End-to-End | 31 | Full pipeline for arithmetic, trig, negation, nesting, log/ln/logbase/abs with nested and combined expressions |
 
 Tests are organized into logical sections within each file:
 - **Unit tests** isolate each module (Token, Lexer, Parser, Evaluator) and test it independently
@@ -269,7 +273,7 @@ Result: -2
 - [x] Percent operator (`%`)
 - [x] Pi constant (`pi`)
 - [x] Unit and integration test suite (GoogleTest)
-- [ ] Additional functions (`log`, `ln`, `abs`)
+- [x] Additional functions (`log`, `ln`, `logbase`, `abs`)
 - [ ] Variable support (`x = 5; 2*x + 3`)
 - [ ] Interactive REPL mode
 - [ ] Multidimensional calculations

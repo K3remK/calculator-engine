@@ -151,3 +151,81 @@ TEST(EvaluatorEvaluate, PiConstant) {
     std::vector<Token> postfix = {Token(PI, M_PI)};
     EXPECT_DOUBLE_EQ(evalPostfix(postfix), M_PI);
 }
+
+// ============================================================
+// Log, Ln, LogBase, Abs
+// ============================================================
+
+TEST(EvaluatorEvaluate, LogValue) {
+    // log(100) = 2.0
+    auto t1 = Token(Number, 100.0);
+    auto t2 = Token(Log);
+    t2.argc = 1;
+    std::vector<Token> postfix = {t1, t2};
+    EXPECT_DOUBLE_EQ(evalPostfix(postfix), 2.0);
+}
+
+TEST(EvaluatorEvaluate, LnValue) {
+    // ln(1) = 0.0
+    auto t1 = Token(Number, 1.0);
+    auto t2 = Token(Ln);
+    t2.argc = 1;
+    std::vector<Token> postfix = {t1, t2};
+    EXPECT_DOUBLE_EQ(evalPostfix(postfix), 0.0);
+}
+
+TEST(EvaluatorEvaluate, AbsNegative) {
+    // abs(-5) = 5.0
+    auto t1 = Token(Number, -5.0);
+    auto t2 = Token(Abs);
+    t2.argc = 1;
+    std::vector<Token> postfix = {t1, t2};
+    EXPECT_DOUBLE_EQ(evalPostfix(postfix), 5.0);
+}
+
+TEST(EvaluatorEvaluate, AbsPositive) {
+    // abs(3) = 3.0
+    auto t1 = Token(Number, 3.0);
+    auto t2 = Token(Abs);
+    t2.argc = 1;
+    std::vector<Token> postfix = {t1, t2};
+    EXPECT_DOUBLE_EQ(evalPostfix(postfix), 3.0);
+}
+
+TEST(EvaluatorEvaluate, LogBaseValue) {
+    // logbase(8, 2) = 3.0
+    auto t1 = Token(Number, 8.0);
+    auto t2 = Token(Number, 2.0);
+    auto t3 = Token(LogBase);
+    t3.argc = 2;
+    std::vector<Token> postfix = {t1, t2, t3};
+    EXPECT_NEAR(evalPostfix(postfix), 3.0, 1e-9);
+}
+
+// ============================================================
+// Edge cases — argc validation
+// ============================================================
+
+TEST(EvaluatorEvaluate, FunctionWithZeroArgcThrows) {
+    // sin() with argc=0 should throw
+    auto t = Token(Sin);
+    t.argc = 0;
+    std::vector<Token> postfix = {Token(Number, 1.0), t};
+    EXPECT_THROW(evalPostfix(postfix), std::runtime_error);
+}
+
+TEST(EvaluatorEvaluate, UnaryFuncWithTooManyArgsThrows) {
+    // log with argc=2 should throw (it's unary)
+    auto t = Token(Log);
+    t.argc = 2;
+    std::vector<Token> postfix = {Token(Number, 1.0), Token(Number, 2.0), t};
+    EXPECT_THROW(evalPostfix(postfix), std::runtime_error);
+}
+
+TEST(EvaluatorEvaluate, LogBaseWrongArgcThrows) {
+    // logbase with argc=1 should throw (needs exactly 2)
+    auto t = Token(LogBase);
+    t.argc = 1;
+    std::vector<Token> postfix = {Token(Number, 8.0), t};
+    EXPECT_THROW(evalPostfix(postfix), std::runtime_error);
+}

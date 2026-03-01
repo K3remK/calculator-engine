@@ -27,6 +27,8 @@ double Evaluator::Evaluate(const std::vector<Token> &postfixTokens) {
                 //* if the current function is a unary func and have more than 1 argument -> throw error
                 if (token.type & UnaryFunctions && token.argc > 1)
                     throw std::runtime_error("Wrong argument count for unary func: " + token.toString() + ", argc: " + std::to_string(token.argc));
+                if (token.type & (LogBase) && token.argc != 2)
+                    throw std::runtime_error("Wrong argument count for binary func: " + token.toString() + ", argc: " + std::to_string(token.argc));
             }
 
             auto actionVariant = token.GetOperatorInfo().action;

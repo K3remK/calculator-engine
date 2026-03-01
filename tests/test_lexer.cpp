@@ -96,6 +96,13 @@ TEST(LexerTokenize, OtherFunctions) {
     EXPECT_EQ(tokenTypes("mod"), std::vector<TokenType>({Mod}));
 }
 
+TEST(LexerTokenize, LogLnLogBaseAbsFunctions) {
+    EXPECT_EQ(tokenTypes("log"), std::vector<TokenType>({Log}));
+    EXPECT_EQ(tokenTypes("ln"), std::vector<TokenType>({Ln}));
+    EXPECT_EQ(tokenTypes("logbase"), std::vector<TokenType>({LogBase}));
+    EXPECT_EQ(tokenTypes("abs"), std::vector<TokenType>({Abs}));
+}
+
 TEST(LexerTokenize, PiConstant) {
     auto tokens = Lexer::Tokenize("pi");
     ASSERT_EQ(tokens.size(), 1);
@@ -134,6 +141,30 @@ TEST(LexerTokenize, ExpressionWithMod) {
 TEST(LexerTokenize, ExpressionWithComma) {
     auto types = tokenTypes("min(1,2,3)");
     std::vector<TokenType> expected = {Min, LeftParen, Number, Comma, Number, Comma, Number, RightParen};
+    EXPECT_EQ(types, expected);
+}
+
+TEST(LexerTokenize, LogExpression) {
+    auto types = tokenTypes("log(100)");
+    std::vector<TokenType> expected = {Log, LeftParen, Number, RightParen};
+    EXPECT_EQ(types, expected);
+}
+
+TEST(LexerTokenize, AbsExpression) {
+    auto types = tokenTypes("abs(5)");
+    std::vector<TokenType> expected = {Abs, LeftParen, Number, RightParen};
+    EXPECT_EQ(types, expected);
+}
+
+TEST(LexerTokenize, LogBaseExpression) {
+    auto types = tokenTypes("logbase(8,2)");
+    std::vector<TokenType> expected = {LogBase, LeftParen, Number, Comma, Number, RightParen};
+    EXPECT_EQ(types, expected);
+}
+
+TEST(LexerTokenize, LnExpression) {
+    auto types = tokenTypes("ln(1)");
+    std::vector<TokenType> expected = {Ln, LeftParen, Number, RightParen};
     EXPECT_EQ(types, expected);
 }
 

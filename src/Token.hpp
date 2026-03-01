@@ -32,18 +32,21 @@ enum TokenType : uint32_t {
     Percent    = 1 << 19,
     UnaryMinus = 1 << 20,
     UnaryPlus  = 1 << 21,
+    Log        = 1 << 22,
+    Ln         = 1 << 23,
+    LogBase    = 1 << 24,
+    Abs        = 1 << 25,
 };
 
 // ! When you add a new function or operator !!!! Dont forget to update the IsOperator and IsFunction functions
-
 // ! Trigonometric functions expects degrees not radians
 
-constexpr uint32_t MathFunctions = Sin | Cos | Tan | Cot | Sqrt | Max | Min;
+constexpr uint32_t MathFunctions = Sin | Cos | Tan | Cot | Sqrt | Max | Min | Log | Ln | LogBase | Abs;
 constexpr uint32_t Numbers = Number | PI;
 constexpr uint32_t PostfixOperators = Fact | Percent;
 constexpr uint32_t Operators = Add | Sub | Mul | Div | Max | UnaryMinus | UnaryPlus;
 constexpr uint32_t InfixOperators = Add | Sub | Mul | Div | Pow;
-constexpr uint32_t UnaryFunctions = Sin | Cos | Tan | Cot | Sqrt;
+constexpr uint32_t UnaryFunctions = Sin | Cos | Tan | Cot | Sqrt | Log | Ln | Abs;
 
 
 using UnaryFunc = std::function<double(double)>;
@@ -104,6 +107,10 @@ static inline const std::unordered_map<TokenType, OperatorInfo> operatorMap = {
         return 1 / tmp;
     })}},
     {Sqrt , {3, false, UnaryFunc([](const double a) { return std::sqrt(a); })}},
+    {Log, {3, false, UnaryFunc{[](double a) { return std::log10(a); }}}},
+    {Ln, {3, false, UnaryFunc([](double a){ return std::log(a); })}},
+    {LogBase, {3, false, BinaryFunc([](double a, double b) { return std::log(a) / std::log(b); })}},
+    {Abs, {3, false, UnaryFunc([](double a) { return std::abs(a); })}},
 };
 
 
@@ -123,7 +130,7 @@ struct Token {
     }
 
     [[nodiscard]] bool IsFunction() const {
-        return type & (Sin | Cos | Tan | Cot | Sqrt | Min | Max);
+        return type & (Sin | Cos | Tan | Cot | Sqrt | Min | Max | Log | Ln | LogBase | Abs);
     }
 
     [[nodiscard]] const OperatorInfo& GetOperatorInfo() const {
@@ -198,6 +205,18 @@ struct Token {
                 break;
             case UnaryPlus:
                 os << "+";
+                break;
+            case Log:
+                os << "log";
+                break;
+            case Ln:
+                os << "ln";
+                break;
+            case LogBase:
+                os << "logbase";
+                break;
+            case Abs:
+                os << "abs";
                 break;
         }
         return os.str();

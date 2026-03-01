@@ -133,6 +133,49 @@ TEST(ParserToPostfix, NestedFunctions) {
 }
 
 // ============================================================
+// Log, Ln, LogBase, Abs functions
+// ============================================================
+
+TEST(ParserToPostfix, LogUnaryFunction) {
+    // log(100)  →  100 log
+    auto types = postfixTypes("log(100)");
+    std::vector<TokenType> expected = {Number, Log};
+    EXPECT_EQ(types, expected);
+}
+
+TEST(ParserToPostfix, LnUnaryFunction) {
+    // ln(1)  →  1 ln
+    auto types = postfixTypes("ln(1)");
+    std::vector<TokenType> expected = {Number, Ln};
+    EXPECT_EQ(types, expected);
+}
+
+TEST(ParserToPostfix, AbsUnaryFunction) {
+    // abs(5)  →  5 abs
+    auto types = postfixTypes("abs(5)");
+    std::vector<TokenType> expected = {Number, Abs};
+    EXPECT_EQ(types, expected);
+}
+
+TEST(ParserToPostfix, LogBaseArgcTracking) {
+    // logbase(8, 2) → 8 2 logbase (with argc=2)
+    const auto infix = Lexer::Tokenize("logbase(8, 2)");
+    const auto postfix = Parser::ToPostfix(infix);
+
+    ASSERT_FALSE(postfix.empty());
+    const auto& logBaseTok = postfix.back();
+    EXPECT_EQ(logBaseTok.type, LogBase);
+    EXPECT_EQ(logBaseTok.argc, 2u);
+}
+
+TEST(ParserToPostfix, NestedAbsLog) {
+    // abs(log(100))  →  100 log abs
+    auto types = postfixTypes("abs(log(100))");
+    std::vector<TokenType> expected = {Number, Log, Abs};
+    EXPECT_EQ(types, expected);
+}
+
+// ============================================================
 // Postfix operators
 // ============================================================
 

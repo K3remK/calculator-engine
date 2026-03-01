@@ -9,11 +9,14 @@
 int main()
 {
     const std::vector<std::string> infixEq = {
+        "log(10)",
+        "sqrt(ln(10)*10)",
+        "logbase(10, 2)",
         "cos(-pi)",
-        "-3 + 1",
+        "abs(-3 + 1)",
         "sin(-90)",
         "10+---10",
-        "-sqrt(+min(+100, 200, 6, 29, max(5, 2, 4, 1)))",
+        "abs(-sqrt(+min(+100, 200, 6, 29, max(5, 2, 4, 1))))",
         "max(1, 2,9 ,10)",
         "sin ( +max ( 2, 3 )* max(1) * 3 )",
         "2 + 3 * 4",
@@ -45,7 +48,7 @@ int main()
             for (auto& t : tokens) {
                 std::cout << t << " ";
             }
-            std::cout << " = " << Evaluator::Evaluate(tokens) << std::endl;
+            std::cout << " = " << std::setprecision(10) << Evaluator::Evaluate(tokens) << std::endl;
         }
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;

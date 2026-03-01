@@ -25,7 +25,11 @@ static inline const std::unordered_map<std::string_view, TokenType> typeMapper =
     {"sqrt", Sqrt},
     {"mod", Mod},
     {"pi", PI},
-    {",", Comma}
+    {",", Comma},
+    {"log", Log},
+    {"ln", Ln},
+    {"logbase", LogBase},
+    {"abs", Abs}
 };
 
 class Lexer {

@@ -153,3 +153,70 @@ TEST(Integration, MinSingleArg) {
 TEST(Integration, MaxSingleArg) {
     EXPECT_DOUBLE_EQ(evaluate("max(1)"), 1.0);
 }
+
+// ============================================================
+// Log, Ln, LogBase, Abs — end-to-end
+// ============================================================
+
+TEST(Integration, LogBase10) {
+    // log(100) = 2
+    EXPECT_DOUBLE_EQ(evaluate("log(100)"), 2.0);
+}
+
+TEST(Integration, LogOfOne) {
+    // log(1) = 0
+    EXPECT_DOUBLE_EQ(evaluate("log(1)"), 0.0);
+}
+
+TEST(Integration, LnOfOne) {
+    // ln(1) = 0
+    EXPECT_DOUBLE_EQ(evaluate("ln(1)"), 0.0);
+}
+
+TEST(Integration, AbsNegative) {
+    // abs(-5) with unary minus inside
+    EXPECT_DOUBLE_EQ(evaluate("abs(-5)"), 5.0);
+}
+
+TEST(Integration, AbsPositive) {
+    EXPECT_DOUBLE_EQ(evaluate("abs(5)"), 5.0);
+}
+
+TEST(Integration, LogBaseBinary) {
+    // logbase(8, 2) = 3
+    EXPECT_NEAR(evaluate("logbase(8, 2)"), 3.0, 1e-9);
+}
+
+TEST(Integration, LogBaseDecimal) {
+    // logbase(100, 10) = 2
+    EXPECT_NEAR(evaluate("logbase(100, 10)"), 2.0, 1e-9);
+}
+
+// ============================================================
+// Nested and complex expressions with new functions
+// ============================================================
+
+TEST(Integration, AbsOfLogSmallNumber) {
+    // abs(log(0.01)) = abs(-2) = 2
+    EXPECT_NEAR(evaluate("abs(log(0.01))"), 2.0, 1e-9);
+}
+
+TEST(Integration, SqrtOfAbs) {
+    // sqrt(abs(-16)) = sqrt(16) = 4
+    EXPECT_DOUBLE_EQ(evaluate("sqrt(abs(-16))"), 4.0);
+}
+
+TEST(Integration, LogPlusLn) {
+    // log(100) + ln(1) = 2 + 0 = 2
+    EXPECT_DOUBLE_EQ(evaluate("log(100) + ln(1)"), 2.0);
+}
+
+TEST(Integration, AbsTimesConstant) {
+    // abs(-3) * 2 = 3 * 2 = 6
+    EXPECT_DOUBLE_EQ(evaluate("abs(-3) * 2"), 6.0);
+}
+
+TEST(Integration, LogBaseInExpression) {
+    // logbase(8, 2) + 1 = 3 + 1 = 4
+    EXPECT_NEAR(evaluate("logbase(8, 2) + 1"), 4.0, 1e-9);
+}

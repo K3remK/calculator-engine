@@ -36,6 +36,10 @@ TEST(TokenIsFunction, ReturnsTrueForMathFunctions) {
     EXPECT_TRUE(Token(Sqrt).IsFunction());
     EXPECT_TRUE(Token(Min).IsFunction());
     EXPECT_TRUE(Token(Max).IsFunction());
+    EXPECT_TRUE(Token(Log).IsFunction());
+    EXPECT_TRUE(Token(Ln).IsFunction());
+    EXPECT_TRUE(Token(LogBase).IsFunction());
+    EXPECT_TRUE(Token(Abs).IsFunction());
 }
 
 TEST(TokenIsFunction, ReturnsFalseForNonFunctions) {
@@ -44,6 +48,8 @@ TEST(TokenIsFunction, ReturnsFalseForNonFunctions) {
     EXPECT_FALSE(Token(LeftParen).IsFunction());
     EXPECT_FALSE(Token(Fact).IsFunction());
     EXPECT_FALSE(Token(Percent).IsFunction());
+    EXPECT_FALSE(Token(UnaryMinus).IsFunction());
+    EXPECT_FALSE(Token(UnaryPlus).IsFunction());
 }
 
 // ============================================================
@@ -64,6 +70,10 @@ TEST(TokenGetOperatorInfo, PrecedenceLevels) {
     EXPECT_EQ(Token(Sin).GetOperatorInfo().precedence, 3);
     EXPECT_EQ(Token(Fact).GetOperatorInfo().precedence, 3);
     EXPECT_EQ(Token(Percent).GetOperatorInfo().precedence, 3);
+    EXPECT_EQ(Token(Log).GetOperatorInfo().precedence, 3);
+    EXPECT_EQ(Token(Ln).GetOperatorInfo().precedence, 3);
+    EXPECT_EQ(Token(LogBase).GetOperatorInfo().precedence, 3);
+    EXPECT_EQ(Token(Abs).GetOperatorInfo().precedence, 3);
 }
 
 TEST(TokenGetOperatorInfo, Associativity) {
@@ -97,6 +107,10 @@ TEST(TokenToString, FunctionNames) {
     EXPECT_EQ(Token(Sqrt).toString(), "sqrt");
     EXPECT_EQ(Token(Min).toString(), "min");
     EXPECT_EQ(Token(Max).toString(), "max");
+    EXPECT_EQ(Token(Log).toString(), "log");
+    EXPECT_EQ(Token(Ln).toString(), "ln");
+    EXPECT_EQ(Token(LogBase).toString(), "logbase");
+    EXPECT_EQ(Token(Abs).toString(), "abs");
 }
 
 TEST(TokenToString, SpecialTokens) {
@@ -233,4 +247,110 @@ TEST(OperatorMapActions, MaxVariadic) {
 TEST(OperatorMapActions, MaxEmptyThrows) {
     auto maxFn = std::get<VariadicFunc>(operatorMap.at(Max).action);
     EXPECT_THROW(maxFn({}), std::invalid_argument);
+}
+
+// ============================================================
+// operatorMap lambdas — Log, Ln, LogBase, Abs
+// ============================================================
+
+TEST(OperatorMapActions, Log) {
+    auto logFn = std::get<UnaryFunc>(operatorMap.at(Log).action);
+    EXPECT_DOUBLE_EQ(logFn(100.0), 2.0);
+    EXPECT_DOUBLE_EQ(logFn(1.0), 0.0);
+    EXPECT_DOUBLE_EQ(logFn(10.0), 1.0);
+    EXPECT_DOUBLE_EQ(logFn(1000.0), 3.0);
+}
+
+TEST(OperatorMapActions, LogEdgeCases) {
+    auto logFn = std::get<UnaryFunc>(operatorMap.at(Log).action);
+    // log(0) should return -infinity
+    EXPECT_TRUE(std::isinf(logFn(0.0)));
+    EXPECT_TRUE(logFn(0.0) < 0);
+    // log of negative number should return NaN
+    EXPECT_TRUE(std::isnan(logFn(-1.0)));
+}
+
+TEST(OperatorMapActions, Ln) {
+    auto lnFn = std::get<UnaryFunc>(operatorMap.at(Ln).action);
+    EXPECT_DOUBLE_EQ(lnFn(1.0), 0.0);
+    EXPECT_NEAR(lnFn(M_E), 1.0, 1e-9);
+    EXPECT_NEAR(lnFn(M_E * M_E), 2.0, 1e-9);
+}
+
+TEST(OperatorMapActions, LnEdgeCases) {
+    auto lnFn = std::get<UnaryFunc>(operatorMap.at(Ln).action);
+    // ln(0) should return -infinity
+    EXPECT_TRUE(std::isinf(lnFn(0.0)));
+    EXPECT_TRUE(lnFn(0.0) < 0);
+    // ln of negative number should return NaN
+    EXPECT_TRUE(std::isnan(lnFn(-1.0)));
+}
+
+TEST(OperatorMapActions, LogBase) {
+    auto logBaseFn = std::get<BinaryFunc>(operatorMap.at(LogBase).action);
+    // logbase(8, 2) = log(8) / log(2) = 3
+    EXPECT_NEAR(logBaseFn(8.0, 2.0), 3.0, 1e-9);
+    // logbase(1, any_base) = 0
+    EXPECT_DOUBLE_EQ(logBaseFn(1.0, 10.0), 0.0);
+    // logbase(27, 3) = 3
+    EXPECT_NEAR(logBaseFn(27.0, 3.0), 3.0, 1e-9);
+    // logbase(100, 10) = 2
+    EXPECT_NEAR(logBaseFn(100.0, 10.0), 2.0, 1e-9);
+}
+
+TEST(OperatorMapActions, LogBaseEdgeCases) {
+    auto logBaseFn = std::get<BinaryFunc>(operatorMap.at(LogBase).action);
+    // logbase(0, 2) = -inf
+    EXPECT_TRUE(std::isinf(logBaseFn(0.0, 2.0)));
+    // logbase(value, 1) = inf (division by log(1)=0)
+    EXPECT_TRUE(std::isinf(logBaseFn(10.0, 1.0)));
+}
+
+TEST(OperatorMapActions, Abs) {
+    auto absFn = std::get<UnaryFunc>(operatorMap.at(Abs).action);
+    EXPECT_DOUBLE_EQ(absFn(-5.0), 5.0);
+    EXPECT_DOUBLE_EQ(absFn(5.0), 5.0);
+    EXPECT_DOUBLE_EQ(absFn(0.0), 0.0);
+    EXPECT_DOUBLE_EQ(absFn(-0.0), 0.0);
+    EXPECT_DOUBLE_EQ(absFn(-3.14), 3.14);
+}
+
+// ============================================================
+// Edge cases for existing operatorMap lambdas
+// ============================================================
+
+TEST(OperatorMapActions, SqrtEdgeCases) {
+    auto sqrtFn = std::get<UnaryFunc>(operatorMap.at(Sqrt).action);
+    // sqrt of negative number returns NaN
+    EXPECT_TRUE(std::isnan(sqrtFn(-1.0)));
+    // sqrt of large number
+    EXPECT_DOUBLE_EQ(sqrtFn(10000.0), 100.0);
+}
+
+TEST(OperatorMapActions, PowEdgeCases) {
+    auto pw = std::get<BinaryFunc>(operatorMap.at(Pow).action);
+    // 0^0 = 1 (C++ std::pow convention)
+    EXPECT_DOUBLE_EQ(pw(0.0, 0.0), 1.0);
+    // 0^positive = 0
+    EXPECT_DOUBLE_EQ(pw(0.0, 5.0), 0.0);
+    // negative^even = positive
+    EXPECT_DOUBLE_EQ(pw(-2.0, 2.0), 4.0);
+    // negative^odd = negative
+    EXPECT_DOUBLE_EQ(pw(-2.0, 3.0), -8.0);
+}
+
+TEST(OperatorMapActions, FactorialEdgeCases) {
+    auto factFn = std::get<UnaryFunc>(operatorMap.at(Fact).action);
+    // Large factorial
+    EXPECT_DOUBLE_EQ(factFn(10.0), 3628800.0);
+    // Negative number — implementation doesn't guard against this explicitly,
+    // but non-integer check picks up negatives like -3.5
+    EXPECT_THROW(factFn(3.5), std::invalid_argument);
+    EXPECT_THROW(factFn(-2.5), std::invalid_argument);
+}
+
+TEST(OperatorMapActions, DivisionByZero) {
+    auto div = std::get<BinaryFunc>(operatorMap.at(Div).action);
+    // Division by zero returns infinity in IEEE 754
+    EXPECT_TRUE(std::isinf(div(1.0, 0.0)));
 }
