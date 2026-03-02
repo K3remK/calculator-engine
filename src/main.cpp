@@ -42,17 +42,32 @@ int main()
     };
 
 
-    try {
-        for (const auto & i : infixEq) {
-            std::vector<Token> tokens = Parser::ToPostfix(Lexer::Tokenize(i));
-            std::cout << i << " -> ";
-            for (auto& t : tokens) {
-                std::cout << t << " ";
-            }
-            std::cout << " = " << std::setprecision(10) << Evaluator::Evaluate(tokens) << std::endl;
+    // try {
+    //     for (const auto & i : infixEq) {
+    //         std::vector<Token> tokens = Parser::ToPostfix(Lexer::Tokenize(i));
+    //         std::cout << i << " -> ";
+    //         for (auto& t : tokens) {
+    //             std::cout << t << " ";
+    //         }
+    //         std::cout << " = " << std::setprecision(10) << Evaluator::Evaluate(tokens) << std::endl;
+    //     }
+    // } catch (const std::exception& e) {
+    //     std::cerr << e.what() << std::endl;
+    // }
+
+    std::string eq;
+
+    while (true) {
+        std::cout << ">";
+        std::getline(std::cin, eq);
+        if (eq == "exit" || eq == "q") {
+            break;
         }
-    } catch (const std::exception& e) {
-        std::cerr << e.what() << std::endl;
+        try {
+            std::cout << Evaluator::Evaluate(Parser::ToPostfix(Lexer::Tokenize(eq))) << std::endl;
+        } catch (const std::exception& e) {
+            std::cout << e.what() << std::endl;
+        }
     }
     return 0;
 }
