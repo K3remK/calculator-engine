@@ -5,6 +5,7 @@ CMakeFiles/
 Testing/
 build/
 .idea/
+design_analysis.md
 
 CMakeCache.txt
 *.cmake
