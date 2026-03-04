@@ -24,15 +24,15 @@ std::vector<Token> Parser::ToPostfix(const std::vector<Token>& infixTokens) {
     std::size_t index = 0;
     while (index < infixTokens.size()) {
         //* Postfix operators like '%', '!' etc. are treated as numbers
-        if (const auto& token = infixTokens[index]; token.type & (Numbers | PostfixOperators)) {
-            if (token.type == Number) {
+        if (auto token = infixTokens[index]; token.type & (Numbers | PostfixOperators)) {
+            if (token.type & Numbers) {
                 if ((index > 0 && infixTokens[index-1].type & (Numbers | PostfixOperators | RightParen)) ||
                 (index < infixTokens.size()-1 && infixTokens[index+1].type & (Numbers | LeftParen)))
                 //* there is a number or Postfix operator that doesn't have anything to do with the equation
                     throw std::runtime_error("Invalid token: " + token.toString());
             }
             queue.emplace_back(token);
-            if (token.type & PostfixOperators && !(infixTokens[index-1].type & (Number | RightParen))) {
+            if (token.type & PostfixOperators && !(infixTokens[index-1].type & (Numbers | RightParen))) {
                 //* Invalid usage of postfix operators !5 or %8 for example
                 throw std::runtime_error("Invalid postfix operator usage: " + token.toString());
             }
@@ -100,15 +100,17 @@ std::vector<Token> Parser::ToPostfix(const std::vector<Token>& infixTokens) {
                 //* to be able to process multiple negations
                 // TODO: the following
                 //? maybe detecting the unary minus function inside the lexer class might be better for compatibility
-                if (token.type == Sub)
-                    token.type = UnaryMinus;
+                if (token.type == Sub) {
+                    token = Token(UnaryMinus);
+                    infixTokens[index].type = token.type;
+                }
                 else if (token.type == Add) {
-                    token.type = UnaryPlus;
+                    token = Token(UnaryPlus);
+                    infixTokens[index].type = token.type;
                 }
                 else
                     //* if it is not Sub or Add operator that means there is a miss usage of an operator (3 + * 3) throw an error
                     throw std::runtime_error("Invalid operator usage: " + token.toString());
-
             } else {
                 while (!stack.empty() && stack.top().IsOperator() &&
                    (stack.top().GetOperatorInfo().precedence > token.GetOperatorInfo().precedence ||

@@ -89,7 +89,7 @@ TEST(ParserToPostfix, NegationAtStart) {
     auto infix = Lexer::Tokenize("-3 + 1");
     auto postfix = Parser::ToPostfix(infix);
     ASSERT_EQ(postfix.size(), 4);  // -3, 1, +
-    EXPECT_DOUBLE_EQ(postfix[0].literalValue, 3.0);
+    EXPECT_DOUBLE_EQ(std::get<double>(postfix[0].data), 3.0);
     EXPECT_EQ(postfix[3].type, Add);
 }
 

@@ -10,7 +10,8 @@
 #include "Token.hpp"
 
 
-static inline const std::unordered_map<std::string_view, TokenType> typeMapper = {
+
+inline static const std::unordered_map<std::string_view, TokenType> typeMapper = {
     {"+", Add},
     {"-", Sub},
     {"*", Mul},

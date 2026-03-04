@@ -9,7 +9,20 @@
 
 class Evaluator {
 public:
-    static double Evaluate(const std::vector<Token>& postfixTokens);
+    static Value Evaluate(const std::vector<Token>& postfixTokens);
+private:
+
+    template<class ... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+    template<class ... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
+    static void validate(const Token& token);
+    static Value evalBinary(TokenType op, const Value& left, const Value& right);
+    static Value evalUnary(TokenType op, const Value& operand);
+    static Value evalVariadic(TokenType op, const std::vector<Value>& operands);
+    static Value evaluateMod(const Value& left, const Value& right);
+    static Value factorial(const Value& operand);
+    static Value minVariadic(const std::vector<Value>& operands);
+    static Value maxVariadic(const std::vector<Value>& operands);
 };
 
 

@@ -7,7 +7,7 @@
 static double evaluate(const std::string& expr) {
     auto tokens = Lexer::Tokenize(expr);
     auto postfix = Parser::ToPostfix(tokens);
-    return Evaluator::Evaluate(postfix);
+    return std::get<double>(Evaluator::Evaluate(postfix));
 }
 
 // ============================================================

@@ -9,6 +9,9 @@ add_executable(calculator-engine
         src/Parser.hpp
         src/Evaluator.cpp
         src/Evaluator.hpp
+        src/Matrix.cpp
+        src/Matrix.h
+        src/IO.h
 )
 
 # 1. Fetch GoogleTest from GitHub

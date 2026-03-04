@@ -19,26 +19,26 @@ TEST(LexerTokenize, SingleInteger) {
     auto tokens = Lexer::Tokenize("42");
     ASSERT_EQ(tokens.size(), 1);
     EXPECT_EQ(tokens[0].type, Number);
-    EXPECT_DOUBLE_EQ(tokens[0].literalValue, 42.0);
+    EXPECT_DOUBLE_EQ(std::get<double>(tokens[0].data), 42.0);
 }
 
 TEST(LexerTokenize, DecimalNumber) {
     auto tokens = Lexer::Tokenize("3.14");
     ASSERT_EQ(tokens.size(), 1);
     EXPECT_EQ(tokens[0].type, Number);
-    EXPECT_NEAR(tokens[0].literalValue, 3.14, 1e-9);
+    EXPECT_NEAR(std::get<double>(tokens[0].data), 3.14, 1e-9);
 }
 
 TEST(LexerTokenize, MultipleDigitInteger) {
     auto tokens = Lexer::Tokenize("12345");
     ASSERT_EQ(tokens.size(), 1);
-    EXPECT_DOUBLE_EQ(tokens[0].literalValue, 12345.0);
+    EXPECT_DOUBLE_EQ(std::get<double>(tokens[0].data), 12345.0);
 }
 
 TEST(LexerTokenize, ZeroValue) {
     auto tokens = Lexer::Tokenize("0");
     ASSERT_EQ(tokens.size(), 1);
-    EXPECT_DOUBLE_EQ(tokens[0].literalValue, 0.0);
+    EXPECT_DOUBLE_EQ(std::get<double>(tokens[0].data), 0.0);
 }
 
 // ============================================================
@@ -107,7 +107,7 @@ TEST(LexerTokenize, PiConstant) {
     auto tokens = Lexer::Tokenize("pi");
     ASSERT_EQ(tokens.size(), 1);
     EXPECT_EQ(tokens[0].type, PI);
-    EXPECT_DOUBLE_EQ(tokens[0].literalValue, M_PI);
+    EXPECT_DOUBLE_EQ(std::get<double>(tokens[0].data), M_PI);
 }
 
 // ============================================================

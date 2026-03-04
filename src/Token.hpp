@@ -1,128 +1,99 @@
 #pragma once
 
+#include <utility>
 #include <variant>
 #include <ostream>
 #include <complex>
 #include <unordered_map>
-#include <functional>
-#include <cmath>
 #include <iomanip>
 #include <cstdint>
+#include "Matrix.h"
 
-enum TokenType : uint32_t {
-    Add        = 1 << 0,  // 1
-    Sub        = 1 << 1,  // 2
-    Mul        = 1 << 2,  // 4
-    Div        = 1 << 3,  // 8
-    Pow        = 1 << 4,  // 16
-    Min        = 1 << 5,  // 32
-    Max        = 1 << 6,  // 64
-    Sin        = 1 << 7,  // 128
-    Cos        = 1 << 8,  // 256
-    Tan        = 1 << 9,  // 512
-    Cot        = 1 << 10, // 1024
-    Sqrt       = 1 << 11, // 2048
-    Number     = 1 << 12,
-    LeftParen  = 1 << 13,
-    RightParen = 1 << 14,
-    Comma      = 1 << 15,
-    Mod        = 1 << 16,
-    PI         = 1 << 17,
-    Fact       = 1 << 18,
-    Percent    = 1 << 19,
-    UnaryMinus = 1 << 20,
-    UnaryPlus  = 1 << 21,
-    Log        = 1 << 22,
-    Ln         = 1 << 23,
-    LogBase    = 1 << 24,
-    Abs        = 1 << 25,
-    Euler      = 1 << 26,
+enum TokenType : uint64_t {
+    Add                 = 1 << 0,  // 1
+    Sub                 = 1 << 1,  // 2
+    Mul                 = 1 << 2,  // 4
+    Div                 = 1 << 3,  // 8
+    Pow                 = 1 << 4,  // 16
+    Min                 = 1 << 5,  // 32
+    Max                 = 1 << 6,  // 64
+    Sin                 = 1 << 7,  // 128
+    Cos                 = 1 << 8,  // 256
+    Tan                 = 1 << 9,  // 512
+    Cot                 = 1 << 10, // 1024
+    Sqrt                = 1 << 11, // 2048
+    Number              = 1 << 12,
+    LeftParen           = 1 << 13,
+    RightParen          = 1 << 14,
+    Comma               = 1 << 15,
+    Mod                 = 1 << 16,
+    PI                  = 1 << 17,
+    Fact                = 1 << 18,
+    Percent             = 1 << 19,
+    UnaryMinus          = 1 << 20,
+    UnaryPlus           = 1 << 21,
+    Log                 = 1 << 22,
+    Ln                  = 1 << 23,
+    LogBase             = 1 << 24,
+    Abs                 = 1 << 25,
+    Euler               = 1 << 26,
+    MatrixT              = 1 << 27,
 };
 
 // ! When you add a new function or operator !!!! Dont forget to update the IsOperator and IsFunction functions
 // ! Trigonometric functions expects degrees not radians
 
-constexpr uint32_t MathFunctions = Sin | Cos | Tan | Cot | Sqrt | Max | Min | Log | Ln | LogBase | Abs;
-constexpr uint32_t Numbers = Number | PI | Euler;
-constexpr uint32_t PostfixOperators = Fact | Percent;
-constexpr uint32_t Operators = Add | Sub | Mul | Div | Max | UnaryMinus | UnaryPlus;
-constexpr uint32_t InfixOperators = Add | Sub | Mul | Div | Pow;
-constexpr uint32_t UnaryFunctions = Sin | Cos | Tan | Cot | Sqrt | Log | Ln | Abs;
-
-
-using UnaryFunc = std::function<double(double)>;
-
-using BinaryFunc = std::function<double(double, double)>;
-
-using VariadicFunc = std::function<double(const std::vector<double>&)>;
+constexpr uint32_t MathFunctions            = Sin | Cos | Tan | Cot | Sqrt | Max | Min | Log | Ln | LogBase | Abs;
+constexpr uint32_t Numbers                  = Number | PI | Euler | MatrixT;
+constexpr uint32_t PostfixOperators         = Fact | Percent;
+constexpr uint32_t Operators                = Add | Sub | Mul | Div | Max | UnaryMinus | UnaryPlus;
+constexpr uint32_t InfixOperators           = Add | Sub | Mul | Div | Pow;
+constexpr uint32_t UnaryFunctions           = Sin | Cos | Tan | Cot | Sqrt | Log | Ln | Abs | UnaryPlus | UnaryMinus | Fact | Percent;
+constexpr uint32_t VariadicFunctions        = Max | Min;
 
 
 struct OperatorInfo {
     int precedence;
     bool isLeftAssociative;
-    std::variant<UnaryFunc, BinaryFunc, VariadicFunc> action;
+    int expectedArgc;
 };
 
-static inline const std::unordered_map<TokenType, OperatorInfo> operatorMap = {
-    {Add , {0, true,  BinaryFunc(std::plus<double>{})}},
-    {Sub , {0, true,  BinaryFunc(std::minus<double>{})}},
-    {Mod,  {1,  true, BinaryFunc([](const double a, const double b) {
-        if (b == 0)
-            throw std::invalid_argument("Modulus by 0");
-        return std::fmod(a, b);
-    })}},
-    {Mul , {1, true,  BinaryFunc(std::multiplies<double>{})}},
-    {Div , {1, true,  BinaryFunc(std::divides<double>{})}},
-    {Pow , {2, false, BinaryFunc([](const double a, const double b) { return std::pow(a, b); })}},
-    {Min , {3, false, VariadicFunc([](const std::vector<double>& v){
-        if (v.empty())
-            throw std::invalid_argument("Empty Function : Min");
-        //* std::min_element returns a pointer to the min element in the vector
-        return static_cast<double>(*std::min_element(v.begin(), v.end()));
-    })}},
-    {Max , {3, true, VariadicFunc([](const std::vector<double>& v) {
-        if (v.empty())
-            throw std::invalid_argument("Empty Function : Max");
-        return static_cast<double>(*std::max_element(v.begin(), v.end()));
-    })}},
-{Percent, {3, false, UnaryFunc([](const double a) { return a / 100.0; })}},
-    {Fact, {3, false, UnaryFunc([](double a) {
-        if (a == 0) return 1.0;
-        if (static_cast<int>(a) != a) throw std::invalid_argument("Factorial supports only integers : " + std::to_string(a));
-        double x = 1;
-        while (a != 1) {
-            x *= a;
-            a -= 1.0;
-        }
-        return x;
-    })}},
-    {UnaryMinus, {3, false, UnaryFunc([](const double a) { return -a; })}},
-    { UnaryPlus, {3, false, UnaryFunc([](const double a) { return a; })}},
-    {Sin , {3, false, UnaryFunc([](const double a) { return std::sin(a * M_PI / 180.0); })}},
-    {Cos , {3, false, UnaryFunc([](const double a) { return std::cos(a * M_PI / 180.0); })}},
-    {Tan , {3, false, UnaryFunc([](const double a) { return std::tan(a * M_PI / 180.0); })}},
-    {Cot , {3, false, UnaryFunc([](const double a) {
-        const double tmp = std::tan(a * M_PI / 180.0);
-        if (tmp == 0.0)
-            throw std::invalid_argument("Tan : " + std::to_string(a));
-        return 1 / tmp;
-    })}},
-    {Sqrt , {3, false, UnaryFunc([](const double a) { return std::sqrt(a); })}},
-    {Log, {3, false, UnaryFunc{[](double a) { return std::log10(a); }}}},
-    {Ln, {3, false, UnaryFunc([](double a){ return std::log(a); })}},
-    {LogBase, {3, false, BinaryFunc([](double a, double b) { return std::log(a) / std::log(b); })}},
-    {Abs, {3, false, UnaryFunc([](double a) { return std::abs(a); })}},
+inline static const std::unordered_map<TokenType, OperatorInfo> operatorMap = {
+    {Add            ,           {0, true,  2}},
+    {Sub            ,           {0, true,  2}},
+    {Mod            ,           {1, true,  2}},
+    {Mul            ,           {1, true,  2}},
+    {Div            ,           {1, true,  2}},
+    {Pow            ,           {2, false, 2}},
+    {Min            ,           {3, false, 2}},
+    {Max            ,           {3, true,  2}},
+    {Percent        ,           {3, false, 1}},
+    {Fact           ,           {3, false, 1}},
+    {UnaryMinus     ,           {3, false, 1}},
+    {UnaryPlus      ,           {3, false, 1}},
+    {Sin            ,           {3, false, 1}},
+    {Cos            ,           {3, false, 1}},
+    {Tan            ,           {3, false, 1}},
+    {Cot            ,           {3, false, 1}},
+    {Sqrt           ,           {3, false, 1}},
+    {Log            ,           {3, false, 1}},
+    {Ln             ,           {3, false, 1}},
+    {LogBase        ,           {3, false, 2}},
+    {Abs            ,           {3, false, 1}}
 };
 
+// This variant can hold a double, an int, or a complex number.
+// The memory footprint is roughly the size of the largest type + an enum tag.
+using Value = std::variant<double, Matrix<double>>;
 
 struct Token {
     mutable TokenType type;
-    mutable double literalValue = 0;
+    Value data;
     // ? can be even a vector in the future for multidimensional calculations
     std::size_t argc = 0;
 
-    explicit Token(const TokenType type, const double literalValue = 0)
-        : type(type), literalValue(literalValue)
+    explicit Token(const TokenType type, Value data = {})
+        : type(type), data(std::move(data))
     {
     }
 
@@ -177,8 +148,11 @@ struct Token {
             case Sqrt     :
                 os << "sqrt";
                 break;
-            case Number   :
-                os << std::setprecision(9) << literalValue;
+            case Number:
+                std::visit([&os](auto&& a) { os << std::setprecision(15) << a; }, data);
+                break;
+            case MatrixT:
+                std::visit([&os](auto&& a) { os << std::setprecision(15) << a; }, data);
                 break;
             case LeftParen :
                 os << "(";
@@ -222,6 +196,7 @@ struct Token {
             case Euler:
                 os << "e";
                 break;
+            default: throw std::invalid_argument("Unknown operator");
         }
         return os.str();
     }

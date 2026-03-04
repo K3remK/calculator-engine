@@ -6,7 +6,7 @@
 // This lets us test the Evaluator in isolation (without Lexer/Parser)
 
 static double evalPostfix(const std::vector<Token>& tokens) {
-    return Evaluator::Evaluate(tokens);
+    return std::get<double>(Evaluator::Evaluate(tokens));
 }
 
 // ============================================================
