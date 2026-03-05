@@ -7,6 +7,8 @@
 
 #include "IO.h"
 #include "Matrix.h"
+#include "PrettyPrint.h"
+#include <variant>
 
 int main()
 {
@@ -40,6 +42,10 @@ int main()
         "( 31 / 0 ) * 1023",
         "sqrt(16) / 5",
         "sin(0) + cos(0)",
+        "[1 2 3 4; 1 2 3 4] * [1;2;3;4]",
+        "([1 2 3; 1 2 3; 1 2 3] * [1 2 3;1 2 3;1 2 3]) / 10",
+        "([1, 2, 3; 1, 2, 3; 1, 2, 3] * [1, 2, 3;1, 2, 3;1, 2, 3]) / 10",
+        "[1 2 3; 1 2 3; 1 2 3]^1000000"
     };
 
     Matrix<double> m(3, 3, 1);
@@ -48,7 +54,7 @@ int main()
         {1, 10, 3},
         {1, 2, 3}
     };
-    m.SetData(data);
+    //m.SetData(data);
 
     Matrix<double> m2(3, 3, 1);
     const std::vector<std::vector<double>> data2 = {
@@ -56,7 +62,7 @@ int main()
         {1, 2, 3},
         {1, 2, 3}
     };
-    m2.SetData(data2);
+    //m2.SetData(data2);
 
     Matrix<double> m3(3, 1, 1);
     const std::vector<std::vector<double>> data3 = {
@@ -64,7 +70,7 @@ int main()
         {2},
         {3}
     };
-    m3.SetData(data3);
+    //m3.SetData(data3);
 
     Matrix<double> t = m * m3;
     t = m.Transpose();
@@ -72,27 +78,33 @@ int main()
 
     const std::vector v = { Token(MatrixT, m), Token(Pow), Token(Number, 2.0)};
 
-    auto x = (Evaluator::Evaluate(Parser::ToPostfix(v)));
+    //auto x = (Evaluator::Evaluate(Parser::ToPostfix(v)));
 
-    for (auto& i : v) {
-        std::cout << i.toString() << " ";
-    }
-    std::cout << std::endl;
-
-    std::visit([](auto&& a) {
-        std::cout << a << std::endl;
-    }, x);
+    // for (auto& i : v) {
+    //     std::cout << i.toString() << " ";
+    // }
+    // std::cout << std::endl;
+    //
+    // std::visit([](auto&& a) {
+    //     std::cout << a << std::endl;
+    // }, x);
 
     try {
         for (const auto & i : infixEq) {
-            std::vector<Token> tokens = Parser::ToPostfix(Lexer::Tokenize(i));
-            std::cout << i << " -> ";
-            for (auto& t : tokens) {
-                std::cout << t << " ";
-            }
-            std::cout << " = " << std::setprecision(10);
-            std::visit([](auto&& a){ std::cout << a; }, Evaluator::Evaluate(tokens));
-            std::cout << std::endl;
+            std::vector<Token> infixTokens = Lexer::Tokenize(i);
+            std::vector<Token> postfixTokens = Parser::ToPostfix(infixTokens);
+            infixTokens.emplace_back(Equality);
+            auto result = Evaluator::Evaluate(postfixTokens);
+            std::visit([&infixTokens](auto&& a) {
+                using Type = std::decay_t<decltype(a)>;
+                if constexpr (std::is_same_v<Type, double>) {
+                    infixTokens.emplace_back(Number, a);
+                } else if constexpr (std::is_same_v<Type, Matrix<double>>) {
+                    infixTokens.emplace_back(MatrixT, a);
+                }
+            }, result);
+
+            PrettyPrint::print(infixTokens);
         }
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;

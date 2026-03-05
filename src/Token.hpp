@@ -38,6 +38,9 @@ enum TokenType : uint64_t {
     Abs                 = 1 << 25,
     Euler               = 1 << 26,
     MatrixT              = 1 << 27,
+    Equality            = 1 << 28,   // TODO
+    Assignment          = 1 << 29,   // TODO
+    Variable            = 1 << 30,   // TODO
 };
 
 // ! When you add a new function or operator !!!! Dont forget to update the IsOperator and IsFunction functions
@@ -195,6 +198,10 @@ struct Token {
                 break;
             case Euler:
                 os << "e";
+                break;
+            case Equality:
+            case Assignment:
+                os << "=";
                 break;
             default: throw std::invalid_argument("Unknown operator");
         }

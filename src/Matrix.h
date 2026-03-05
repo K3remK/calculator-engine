@@ -49,6 +49,10 @@ public:
     size_t GetN() const {
         return N;
     }
+
+    const std::vector<std::vector<T>>& GetData() const {
+        return m_Data;
+    }
     
     bool CheckSize(const Matrix &other) const {
         return other.GetM() == GetM() && other.GetN() == GetN();
@@ -63,6 +67,10 @@ public:
 
 
     void SetData(const std::vector<std::vector<double>> &data) {
+        if (M != data.size()) throw std::runtime_error("Matrix size mismatch!");
+        for (const auto & i : data) {
+            if (N != i.size()) throw std::runtime_error("Matrix size mismatch!");
+        }
         this->m_Data = data;
     }
 

@@ -1,7 +1,7 @@
 <p align="center">
   <h1 align="center">🧮 Calculator Engine</h1>
   <p align="center">
-    <strong>A fast, extensible mathematical expression evaluator built from scratch in modern C++17</strong>
+    <strong>A fast, extensible mathematical expression evaluator with matrix support — built from scratch in modern C++17</strong>
   </p>
   <p align="center">
     <img src="https://img.shields.io/badge/C%2B%2B-17-blue?style=for-the-badge&logo=cplusplus&logoColor=white" alt="C++17">
@@ -15,7 +15,7 @@
 
 ## ✨ Overview
 
-**Calculator Engine** is a modular mathematical expression evaluator that parses and computes human-readable infix expressions like `sqrt(3^2 + 4^2)` or `min(1, 2, 3, 4, 5)`. It follows a classic compiler pipeline — **Lexing → Parsing → Evaluation** — implementing the [Shunting-Yard algorithm](https://en.wikipedia.org/wiki/Shunting-yard_algorithm) for correct operator precedence and associativity.
+**Calculator Engine** is a modular mathematical expression evaluator that parses and computes human-readable infix expressions like `sqrt(3^2 + 4^2)`, `min(1, 2, 3, 4, 5)`, and even **matrix expressions** like `[1 2; 3 4] * [5; 6]`. It follows a classic compiler pipeline — **Lexing → Parsing → Evaluation** — implementing the [Shunting-Yard algorithm](https://en.wikipedia.org/wiki/Shunting-yard_algorithm) for correct operator precedence and associativity. Results can be **scalars or matrices**, and the engine pretty-prints matrix outputs with vertically-centered alignment.
 
 ```
 Input:  "sqrt(3^2 + 4^2)"
@@ -39,40 +39,63 @@ Output:  5.0
 
 ## 🚀 Features
 
-| Category | Supported |
-|---|---|
-| **Arithmetic** | `+`  `-`  `*`  `/`  `^` (power)  `mod` (modulus) |
-| **Unary Operators** | `-` (negation)  `+` (identity) — e.g. `-3 + 1`, `10+---10`, `-sqrt(16)` |
-| **Trigonometry** | `sin`  `cos`  `tan`  `cot` *(expects degrees)* |
-| **Functions** | `sqrt`  `min`  `max`  `abs`  `log` (base 10)  `ln` (natural)  `logbase(value, base)` |
-| **Postfix Operators** | `!` (factorial)  `%` (percent) — e.g. `5!`, `80%` |
-| **Constants** | `pi` — Archimedes' constant (≈ 3.14159) |
-| **Variadic** | `min(1,2,3,...,n)`  `max(1,2,3,...,n)` — any number of arguments |
-| **Nesting** | Fully nested expressions: `sqrt(min(100, 200, 6, 29, max(5, 2, 4, 1)))` |
-| **Precedence** | Correct mathematical operator precedence and associativity |
-| **Whitespace** | Flexible — spaces are optional: `2+3*4` and `2 + 3 * 4` both work |
+| Category              | Supported                                                                            |
+| --------------------- | ------------------------------------------------------------------------------------ |
+| **Arithmetic**        | `+` `-` `*` `/` `^` (power) `mod` (modulus)                                          |
+| **Unary Operators**   | `-` (negation) `+` (identity) — e.g. `-3 + 1`, `10+---10`, `-sqrt(16)`               |
+| **Trigonometry**      | `sin` `cos` `tan` `cot` _(expects degrees)_                                          |
+| **Functions**         | `sqrt` `min` `max` `abs` `log` (base 10) `ln` (natural) `logbase(value, base)`       |
+| **Postfix Operators** | `!` (factorial) `%` (percent) — e.g. `5!`, `80%`                                     |
+| **Constants**         | `pi` (≈ 3.14159) `e` — Euler's number (≈ 2.71828)                                    |
+| **Matrix Literals**   | Inline syntax: `[1 2 3; 4 5 6]` — rows separated by `;`, columns by spaces or commas |
+| **Matrix Arithmetic** | `+` `-` `*` `/` `^` between matrices and/or scalars (mixed-type expressions)         |
+| **Matrix Operations** | Transpose, Identity, element-wise `abs`, and integer power (`A^n`)                   |
+| **Pretty Printing**   | Matrix results are displayed with bracket notation and vertically-centered alignment |
+| **Variadic**          | `min(1,2,3,...,n)` `max(1,2,3,...,n)` — any number of arguments                      |
+| **Nesting**           | Fully nested expressions: `sqrt(min(100, 200, 6, 29, max(5, 2, 4, 1)))`              |
+| **Precedence**        | Correct mathematical operator precedence and associativity                           |
+| **Whitespace**        | Flexible — spaces are optional: `2+3*4` and `2 + 3 * 4` both work                    |
 
 ---
 
 ## 🏗️ Architecture
 
-The engine is split into **four cleanly separated modules**, each with a single responsibility:
+The engine is split into **six cleanly separated modules**, each with a single responsibility:
 
 ### `Token` — Type System
-Defines all supported token types using bitmask enums for efficient type checking. Contains operator metadata (precedence, associativity) and function dispatchers (`UnaryFunc`, `BinaryFunc`, `VariadicFunc`) via `std::variant`.
+
+Defines all supported token types using bitmask enums for efficient type checking. Contains operator metadata (precedence, associativity) and the polymorphic `Value` type (`std::variant<double, Matrix<double>>`) that enables the engine to seamlessly operate on both scalars and matrices.
+
+### `Matrix` — Matrix Data Structure
+
+A header-only template class `Matrix<T>` providing:
+
+- **Arithmetic**: matrix-matrix (`+`, `-`, `*`) and matrix-scalar (`+`, `-`, `*`, `/`) operations
+- **Utilities**: `Transpose()`, `Identity()`, `IsSquare()`, element-wise `abs()`
+- **Power**: integer matrix exponentiation via repeated multiplication
+- **Stream output**: `operator<<` for formatted display
 
 ### `Lexer` — Tokenization
-Scans the raw input string character-by-character and produces a flat sequence of `Token` objects. Handles multi-character identifiers (e.g., `sqrt`, `min`), floating-point number literals, and special symbols like `!` and `%`.
+
+Scans the raw input string character-by-character and produces a flat sequence of `Token` objects. Handles multi-character identifiers (e.g., `sqrt`, `min`), floating-point number literals, special symbols like `!` and `%`, and **matrix literals** enclosed in `[ ]` with `;` as the row separator.
 
 ### `Parser` — Infix to Postfix Conversion
+
 Implements the **Shunting-Yard algorithm** to convert infix token sequences into postfix (Reverse Polish Notation). Correctly handles:
+
 - Operator precedence and left/right associativity
 - Nested parenthesized expressions
 - Function calls with variadic argument counting
 - **Unary minus and plus detection** — automatically distinguishes between `-` as subtraction and `-` as negation based on context (e.g., `-3`, `5 * -2`, `--3`)
+- **Matrix tokens** — matrix literals pass through as operands alongside numbers
 
 ### `Evaluator` — Stack-Based Computation
-Walks the postfix token sequence and evaluates it using a stack. Leverages `std::visit` on the operator's `std::variant` action to dynamically dispatch unary, binary, and variadic operations.
+
+Walks the postfix token sequence and evaluates it using a stack. Leverages `std::visit` with the `overloaded` pattern to dynamically dispatch unary, binary, and variadic operations. Correctly handles mixed-type operations (e.g., `Matrix * scalar`, `scalar + Matrix`) through `std::variant` visitor dispatch.
+
+### `PrettyPrint` — Output Rendering
+
+Renders expression results with vertically-centered alignment. Matrices are displayed with bracket notation (`[ ... ]`), and all elements in a multi-line equation are vertically aligned to the tallest operand.
 
 ```
 ┌──────────────────────────────────────────────────────┐
@@ -81,7 +104,7 @@ Walks the postfix token sequence and evaluates it using a stack. Leverages `std:
 └───────────┬──────────────────────────────────────────┘
             │
    ┌────────▼────────┐
-   │   Lexer.hpp/cpp │──→ Token.hpp (types + operators)
+   │   Lexer.hpp/cpp │──→ Token.hpp ──→ Matrix.h
    └────────┬────────┘
             │
    ┌────────▼────────┐
@@ -89,8 +112,12 @@ Walks the postfix token sequence and evaluates it using a stack. Leverages `std:
    └────────┬────────┘
             │
    ┌────────▼──────────┐
-   │ Evaluator.hpp/cpp │──→ Token.hpp
-   └───────────────────┘
+   │ Evaluator.hpp/cpp │──→ Token.hpp, Matrix.h
+   └────────┬──────────┘
+            │
+   ┌────────▼───────────────┐
+   │ PrettyPrint.hpp/cpp    │──→ Token.hpp, Matrix.h
+   └────────────────────────┘
 ```
 
 ---
@@ -119,21 +146,35 @@ cmake --build build
 
 ### Example Output
 
+Scalar expressions:
+
 ```
-cos(-pi)                                             -> π - cos  = -1
--3 + 1                                               -> 3 - 1 +  = -2
-sin(-90)                                             -> 90 - sin  = -1
-10+---10                                             -> 10 10 - - -  = 0
--sqrt(+min(+100, 200, 6, 29, max(5, 2, 4, 1)))      -> 100 + 200 6 29 5 2 4 1 max min + sqrt -  = -2.44948975
-2 + 3 * 4                                            -> 2 3 4 * +  = 14
-sqrt(3^2 + 4^2)                                      -> 3 2 ^ 4 2 ^ + sqrt  = 5
-(80*20%)!                                            -> 80 20 % * !  = 20922789888000
-100 mod 13                                           -> 100 13 mod  = 9
-3*pi/2                                               -> 3 π * 2 /  = 4.71238898
-log(100)                                             -> 100 log  = 2
-ln(1)                                                -> 1 ln  = 0
-abs(-5)                                              -> 5 - abs  = 5
-logbase(8, 2)                                        -> 8 2 logbase  = 3
+2 + 3 * 4       = 14
+sqrt(3^2 + 4^2) = 5
+cos(-pi)        = -1
+-3 + 1          = -2
+(80*20%)!       = 20922789888000
+100 mod 13      = 9
+log(100)        = 2
+logbase(8, 2)   = 3
+abs(-5)         = 5
+```
+
+Matrix expressions:
+
+```
+                 [ 1 ]
+[ 1  2  3  4 ]   [ 2 ]   [ 30 ]
+[ 1  2  3  4 ] * [ 3 ] = [ 30 ]
+                 [ 4 ]
+
+   [ 1  2  3 ]   [ 1  2  3 ]             [ 0.6  1.2  1.8 ]
+ ( [ 1  2  3 ] * [ 1  2  3 ] )  /  10  = [ 0.6  1.2  1.8 ]
+   [ 1  2  3 ]   [ 1  2  3 ]             [ 0.6  1.2  1.8 ]
+
+[ 1  2  3 ]               [ inf  inf  inf ]
+[ 1  2  3 ] ^  1000000  = [ inf  inf  inf ]
+[ 1  2  3 ]               [ inf  inf  inf ]
 ```
 
 ---
@@ -158,15 +199,16 @@ cd build && ctest --output-on-failure
 
 ### Test Structure
 
-| Test File | Module | Tests | Description |
-|---|---|---|---|
-| `test_token.cpp` | Token | 47 | Token type classification, operator info, `toString()`, all `operatorMap` lambdas including log/ln/logbase/abs, and edge cases |
-| `test_lexer.cpp` | Lexer | 30 | Number/identifier tokenization, operators, whitespace, full expressions including log/ln/logbase/abs, error cases |
-| `test_parser.cpp` | Parser | 24 | Precedence, parentheses, power associativity, unary minus, functions including log/ln/logbase/abs, postfix ops, errors |
-| `test_evaluator.cpp` | Evaluator | 23 | Binary/unary/variadic ops, log/ln/logbase/abs evaluation, argc validation, multi-step expressions, constants |
-| `test_integration.cpp` | End-to-End | 31 | Full pipeline for arithmetic, trig, negation, nesting, log/ln/logbase/abs with nested and combined expressions |
+| Test File              | Module     | Tests | Description                                                                                                                    |
+| ---------------------- | ---------- | ----- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `test_token.cpp`       | Token      | 47    | Token type classification, operator info, `toString()`, all `operatorMap` lambdas including log/ln/logbase/abs, and edge cases |
+| `test_lexer.cpp`       | Lexer      | 30    | Number/identifier tokenization, operators, whitespace, full expressions including log/ln/logbase/abs, error cases              |
+| `test_parser.cpp`      | Parser     | 24    | Precedence, parentheses, power associativity, unary minus, functions including log/ln/logbase/abs, postfix ops, errors         |
+| `test_evaluator.cpp`   | Evaluator  | 23    | Binary/unary/variadic ops, log/ln/logbase/abs evaluation, argc validation, multi-step expressions, constants                   |
+| `test_integration.cpp` | End-to-End | 31    | Full pipeline for arithmetic, trig, negation, nesting, log/ln/logbase/abs with nested and combined expressions                 |
 
 Tests are organized into logical sections within each file:
+
 - **Unit tests** isolate each module (Token, Lexer, Parser, Evaluator) and test it independently
 - **Integration tests** run the full pipeline from raw string input to final numeric result
 - **Error cases** verify that malformed inputs throw appropriate exceptions
@@ -182,13 +224,17 @@ calculator-engine/
 ├── src/
 │   ├── main.cpp             # Demo driver with sample expressions
 │   ├── Token.hpp            # Token types, operator info & function dispatch
+│   ├── Matrix.h             # Matrix<T> template class (arithmetic, transpose, identity)
+│   ├── Matrix.cpp           # Matrix implementation helpers
 │   ├── Lexer.hpp            # Lexer class declaration + keyword map
-│   ├── Lexer.cpp            # Tokenization implementation
+│   ├── Lexer.cpp            # Tokenization implementation (incl. matrix literals)
 │   ├── Parser.hpp           # Parser class declaration
 │   ├── Parser.cpp           # Shunting-Yard algorithm implementation
 │   ├── Evaluator.hpp        # Evaluator class declaration
-│   ├── Evaluator.cpp        # Postfix evaluation implementation
-│   └── Util.hpp             # Utility helpers
+│   ├── Evaluator.cpp        # Postfix evaluation (scalar & matrix)
+│   ├── PrettyPrint.h        # Pretty-printer class declaration
+│   ├── PrettyPrint.cpp      # Vertically-centered matrix/equation rendering
+│   └── IO.h                 # Cross-platform terminal input utilities
 ├── tests/
 │   ├── test_main.cpp        # GoogleTest main entry point
 │   ├── test_token.cpp       # Token type system unit tests
@@ -203,19 +249,24 @@ calculator-engine/
 
 ## 🧪 How It Works — Step by Step
 
+### Scalar Example
+
 Let's trace `(2 + 3) * 4` through the engine:
 
 **1. Lexing** — `Lexer::Tokenize("(2 + 3) * 4")`
+
 ```
 Tokens: [ LeftParen, 2, Add, 3, RightParen, Mul, 4 ]
 ```
 
-**2. Parsing** — `Parser::ToPostfix(tokens)` *(Shunting-Yard)*
+**2. Parsing** — `Parser::ToPostfix(tokens)` _(Shunting-Yard)_
+
 ```
 Postfix: [ 2, 3, +, 4, * ]
 ```
 
 **3. Evaluation** — `Evaluator::Evaluate(postfix)`
+
 ```
 Stack trace:
   push 2       → [2]
@@ -227,16 +278,48 @@ Stack trace:
 Result: 20
 ```
 
+### Matrix Example
+
+Tracing `[1 2; 3 4] * [5; 6]`:
+
+**1. Lexing** — the lexer recognizes `[...]` as a matrix literal:
+
+```
+Tokens: [ Matrix(2×2), Mul, Matrix(2×1) ]
+         [[1,2],[3,4]]       [[5],[6]]
+```
+
+**2. Parsing** — matrices pass through as operands:
+
+```
+Postfix: [ Matrix(2×2), Matrix(2×1), * ]
+```
+
+**3. Evaluation** — matrix multiplication is dispatched via `std::visit`:
+
+```
+Stack trace:
+  push [[1,2],[3,4]]  → [M1]
+  push [[5],[6]]      → [M1, M2]
+  apply *             → [M3]     (M1 × M2)
+
+Result: [ 17 ]
+        [ 39 ]
+```
+
 ### Unary Minus Example
 
 Tracing `-3 + 1`:
 
 **1. Lexing** — produces `[ Sub, 3, Add, 1 ]`
 **2. Parsing** — the parser sees `-` at the start (no preceding number), so it re-classifies `Sub` → `UnaryMinus`:
+
 ```
 Postfix: [ 3, UnaryMinus, 1, + ]
 ```
+
 **3. Evaluation**
+
 ```
 Stack trace:
   push 3       → [3]
@@ -251,15 +334,19 @@ Result: -2
 
 ## 🔑 Key Design Decisions
 
-| Decision | Rationale |
-|---|---|
-| **Bitmask enum for `TokenType`** | Enables fast category checks via bitwise AND (e.g., `type & MathFunctions`) |
-| **`std::variant` for operator actions** | Type-safe polymorphic dispatch without virtual functions or inheritance |
-| **Shunting-Yard algorithm** | Industry-standard O(n) algorithm for infix-to-postfix conversion |
-| **Degrees for trigonometry** | More intuitive for end-users (internal conversion: `value × π / 180`) |
-| **Static `Tokenize` / `ToPostfix` / `Evaluate`** | Functional-style API — no need to manage object lifecycle |
-| **Context-based unary detection** | Parser detects unary `-`/`+` when no operand precedes them, avoiding the need for a separate pre-processing pass |
-| **GoogleTest via FetchContent** | Zero-config testing — CMake downloads GoogleTest automatically, no manual setup required |
+| Decision                                               | Rationale                                                                                                              |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| **Bitmask enum for `TokenType`**                       | Enables fast category checks via bitwise AND (e.g., `type & MathFunctions`)                                            |
+| **`std::variant<double, Matrix<double>>` for `Value`** | Unified type-safe value representation — the engine seamlessly handles scalars and matrices through the same pipeline  |
+| **`overloaded` visitor pattern**                       | Clean dispatch of mixed-type binary operations (matrix×scalar, scalar+matrix, etc.) without manual type-checking       |
+| **Header-only `Matrix<T>` template**                   | Generic matrix class supporting any numeric type; all operator overloads defined inline for zero-overhead abstractions |
+| **Bracket `[...]` matrix literal syntax**              | MATLAB-inspired inline notation (`[1 2; 3 4]`), parsed directly by the Lexer into `Matrix<double>` tokens              |
+| **Shunting-Yard algorithm**                            | Industry-standard O(n) algorithm for infix-to-postfix conversion                                                       |
+| **Degrees for trigonometry**                           | More intuitive for end-users (internal conversion: `value × π / 180`)                                                  |
+| **Static `Tokenize` / `ToPostfix` / `Evaluate`**       | Functional-style API — no need to manage object lifecycle                                                              |
+| **Context-based unary detection**                      | Parser detects unary `-`/`+` when no operand precedes them, avoiding the need for a separate pre-processing pass       |
+| **`PrettyPrint` with vertical centering**              | Multi-line matrix output is vertically aligned with surrounding operators for readable equation display                |
+| **GoogleTest via FetchContent**                        | Zero-config testing — CMake downloads GoogleTest automatically, no manual setup required                               |
 
 ---
 
@@ -271,12 +358,14 @@ Result: -2
 - [x] Modulus operator (`mod`)
 - [x] Factorial operator (`!`)
 - [x] Percent operator (`%`)
-- [x] Pi constant (`pi`)
+- [x] Pi constant (`pi`) and Euler's number (`e`)
 - [x] Unit and integration test suite (GoogleTest)
 - [x] Additional functions (`log`, `ln`, `logbase`, `abs`)
+- [x] Matrix support — inline literals, arithmetic, transpose, identity, power
+- [x] Pretty-printed output with vertically-centered matrix rendering
+- [ ] Matrix inverse and determinant
 - [ ] Variable support (`x = 5; 2*x + 3`)
 - [ ] Interactive REPL mode
-- [ ] Multidimensional calculations
 
 ---
 

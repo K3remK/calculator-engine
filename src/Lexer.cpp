@@ -69,6 +69,10 @@ std::vector<Token> Lexer::tokenizeCore() {
             case '!':
                 tokens.emplace_back(Fact);
                 break;
+            case '[':
+                cursor++;
+                tokens.emplace_back(tokenizeMatrix());
+                break;
             default:
                 //* Unknown symbol
                 throw std::invalid_argument("Invalid symbol: " + std::string(1, currentChar));
@@ -107,4 +111,34 @@ Token Lexer::tokenizeIdentifier() {
     } catch (const std::out_of_range& e) {
         throw std::out_of_range("Invalid identifier: " + std::string(raw));
     }
+}
+
+Token Lexer::tokenizeMatrix() {
+    std::vector<std::vector<double>> data = std::vector<std::vector<double>>(1);
+    if (input[cursor] == ']') throw std::invalid_argument("Empty matrix!");
+    size_t row = 0;
+    size_t col = 0;
+    const size_t start = cursor;
+    while (cursor < input.length() && input[cursor] != ']') {
+        if (input[cursor] == ';') {
+            if (cursor == start) throw std::invalid_argument("First row empty!");
+            data.emplace_back();
+            row++;
+            cursor++;
+            continue;
+        }
+        if (input[cursor] == ',' || input[cursor] == ' ') {
+            cursor++;
+            continue;
+        }
+        if (std::isdigit(input[cursor]) || input[cursor] == '.')
+            data[row].push_back(std::get<double>(tokenizeNumber().data));
+        else
+            throw std::invalid_argument("Invalid matrix data!");
+        if (!row) col++;
+    }
+    if (cursor >= input.length()) throw std::invalid_argument("Unclosed matrix!");
+    Matrix<double> m(row + 1, col);
+    m.SetData(data);
+    return Token(MatrixT, m);
 }

@@ -12,6 +12,8 @@ add_executable(calculator-engine
         src/Matrix.cpp
         src/Matrix.h
         src/IO.h
+        src/PrettyPrint.cpp
+        src/PrettyPrint.h
 )
 
 # 1. Fetch GoogleTest from GitHub

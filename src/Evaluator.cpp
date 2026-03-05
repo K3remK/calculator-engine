@@ -9,7 +9,6 @@
 
 #include <iostream>
 
-// TODO: return a new type Result that contains a void pointer just like Token and a type if it is matrix (or vector) or double
 Value Evaluator::Evaluate(const std::vector<Token> &postfixTokens) {
     std::stack<Token> stack;
 

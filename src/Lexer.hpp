@@ -46,6 +46,7 @@ private:
     std::vector<Token> tokenizeCore();
     Token tokenizeNumber();
     Token tokenizeIdentifier();
+    Token tokenizeMatrix();
 };
 
 
