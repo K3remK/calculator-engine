@@ -3,11 +3,13 @@
 //
 
 #include "Evaluator.hpp"
-#include "Matrix.h"
+
+#include <complex>
+
+#include "Matrix.hpp"
 #include <stack>
 #include <type_traits>
 
-#include <iostream>
 
 Value Evaluator::Evaluate(const std::vector<Token> &postfixTokens) {
     std::stack<Token> stack;
@@ -108,6 +110,13 @@ Value Evaluator::evalBinary(const TokenType op, const Value &left, const Value &
             return std::visit([](auto&& a, auto&& b) -> Value { return a * b; }, left, right);
         case Div:
             return std::visit([](auto&& a, auto&& b) -> Value { return a / b; }, left, right);
+        case InvMul:
+            return std::visit(overloaded{
+                [](const Matrix<double>& a, const Matrix<double>& b) -> Value { return Matrix<double>::Solve(a, b); },
+                [](auto&&, auto&&) -> Value {
+                    throw std::invalid_argument("InvMul not supported for this type");
+                }
+            }, left, right);
         case Mod:
             return evaluateMod(left, right);
         case Pow:

@@ -229,3 +229,47 @@ TEST(ParserToPostfix, InvalidTokenPlacementThrows) {
     auto infix = Lexer::Tokenize("2 3");
     EXPECT_THROW(Parser::ToPostfix(infix), std::runtime_error);
 }
+
+// ============================================================
+// Matrix tokens in postfix
+// ============================================================
+
+TEST(ParserToPostfix, MatrixMultiplication) {
+    // [1 2; 3 4] * [5; 6]  →  MatrixT MatrixT Mul
+    auto infix = Lexer::Tokenize("[1 2; 3 4] * [5; 6]");
+    auto postfix = Parser::ToPostfix(infix);
+    ASSERT_EQ(postfix.size(), 3u);
+    EXPECT_EQ(postfix[0].type, MatrixT);
+    EXPECT_EQ(postfix[1].type, MatrixT);
+    EXPECT_EQ(postfix[2].type, Mul);
+}
+
+TEST(ParserToPostfix, MatrixInvMul) {
+    // [1 2; 3 4] \ [5; 6]  →  MatrixT MatrixT InvMul
+    auto infix = Lexer::Tokenize("[1 2; 3 4] \\ [5; 6]");
+    auto postfix = Parser::ToPostfix(infix);
+    ASSERT_EQ(postfix.size(), 3u);
+    EXPECT_EQ(postfix[0].type, MatrixT);
+    EXPECT_EQ(postfix[1].type, MatrixT);
+    EXPECT_EQ(postfix[2].type, InvMul);
+}
+
+TEST(ParserToPostfix, MatrixScalarDivision) {
+    // [1 2; 3 4] / 2  →  MatrixT 2 Div
+    auto infix = Lexer::Tokenize("[1 2; 3 4] / 2");
+    auto postfix = Parser::ToPostfix(infix);
+    ASSERT_EQ(postfix.size(), 3u);
+    EXPECT_EQ(postfix[0].type, MatrixT);
+    EXPECT_EQ(postfix[1].type, Number);
+    EXPECT_EQ(postfix[2].type, Div);
+}
+
+TEST(ParserToPostfix, MatrixPower) {
+    // [1 0; 0 1] ^ 3  →  MatrixT 3 Pow
+    auto infix = Lexer::Tokenize("[1 0; 0 1] ^ 3");
+    auto postfix = Parser::ToPostfix(infix);
+    ASSERT_EQ(postfix.size(), 3u);
+    EXPECT_EQ(postfix[0].type, MatrixT);
+    EXPECT_EQ(postfix[1].type, Number);
+    EXPECT_EQ(postfix[2].type, Pow);
+}

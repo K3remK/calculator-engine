@@ -3,6 +3,7 @@
 //
 
 #include "PrettyPrint.h"
+#include <iostream>
 
 void PrettyPrint::print(const std::vector<Token> &tokens) {
     // 1. First pass: Determine the global max height

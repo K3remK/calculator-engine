@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <cmath>
 #include "../src/Lexer.hpp"
 #include "../src/Parser.hpp"
 #include "../src/Evaluator.hpp"
@@ -219,4 +220,102 @@ TEST(Integration, AbsTimesConstant) {
 TEST(Integration, LogBaseInExpression) {
     // logbase(8, 2) + 1 = 3 + 1 = 4
     EXPECT_NEAR(evaluate("logbase(8, 2) + 1"), 4.0, 1e-9);
+}
+
+// ============================================================
+// Matrix operations — end-to-end
+// ============================================================
+
+// Helper: full pipeline evaluation returning a matrix
+static Matrix<double> evaluateMatrix(const std::string& expr) {
+    auto tokens = Lexer::Tokenize(expr);
+    auto postfix = Parser::ToPostfix(tokens);
+    return std::get<Matrix<double>>(Evaluator::Evaluate(postfix));
+}
+
+TEST(Integration, MatrixMultiplication) {
+    // [1 2; 3 4] * [5; 6] = [17; 39]
+    auto result = evaluateMatrix("[1 2; 3 4] * [5; 6]");
+    EXPECT_EQ(result.GetM(), 2u);
+    EXPECT_EQ(result.GetN(), 1u);
+    EXPECT_NEAR(result[0][0], 17.0, 1e-9);
+    EXPECT_NEAR(result[1][0], 39.0, 1e-9);
+}
+
+TEST(Integration, MatrixScalarDivision) {
+    // [10 20; 30 40] / 2 = [5 10; 15 20]
+    auto result = evaluateMatrix("[10 20; 30 40] / 2");
+    EXPECT_DOUBLE_EQ(result[0][0], 5.0);
+    EXPECT_DOUBLE_EQ(result[0][1], 10.0);
+    EXPECT_DOUBLE_EQ(result[1][0], 15.0);
+    EXPECT_DOUBLE_EQ(result[1][1], 20.0);
+}
+
+TEST(Integration, MatrixPowerIdentity) {
+    // [1 0; 0 1] ^ 3 = identity
+    auto result = evaluateMatrix("[1 0; 0 1] ^ 3");
+    EXPECT_DOUBLE_EQ(result[0][0], 1.0);
+    EXPECT_DOUBLE_EQ(result[0][1], 0.0);
+    EXPECT_DOUBLE_EQ(result[1][0], 0.0);
+    EXPECT_DOUBLE_EQ(result[1][1], 1.0);
+}
+
+TEST(Integration, MatrixAddition) {
+    // [1 2; 3 4] + [5 6; 7 8] = [6 8; 10 12]
+    auto result = evaluateMatrix("[1 2; 3 4] + [5 6; 7 8]");
+    EXPECT_DOUBLE_EQ(result[0][0], 6.0);
+    EXPECT_DOUBLE_EQ(result[0][1], 8.0);
+    EXPECT_DOUBLE_EQ(result[1][0], 10.0);
+    EXPECT_DOUBLE_EQ(result[1][1], 12.0);
+}
+
+TEST(Integration, MatrixSubtraction) {
+    // [5 6; 7 8] - [1 2; 3 4] = [4 4; 4 4]
+    auto result = evaluateMatrix("[5 6; 7 8] - [1 2; 3 4]");
+    EXPECT_DOUBLE_EQ(result[0][0], 4.0);
+    EXPECT_DOUBLE_EQ(result[1][1], 4.0);
+}
+
+TEST(Integration, LinearSolve) {
+    // [2 1; 5 3] \ [8; 21] = [3; 2]
+    auto result = evaluateMatrix("[2 1; 5 3] \\ [8; 21]");
+    EXPECT_NEAR(result[0][0], 3.0, 1e-9);
+    EXPECT_NEAR(result[1][0], 2.0, 1e-9);
+}
+
+TEST(Integration, LinearSolve3x3) {
+    // [2 0 0; 0 3 0; 0 0 4] \ [8; 9; 8] = [4; 3; 2]
+    auto result = evaluateMatrix("[2 0 0; 0 3 0; 0 0 4] \\ [8; 9; 8]");
+    EXPECT_NEAR(result[0][0], 4.0, 1e-9);
+    EXPECT_NEAR(result[1][0], 3.0, 1e-9);
+    EXPECT_NEAR(result[2][0], 2.0, 1e-9);
+}
+
+TEST(Integration, SingularMatrixSolveThrows) {
+    // [1 2 3; 4 5 6; 7 8 9] \ [1; 2; 3] — singular matrix
+    auto tokens = Lexer::Tokenize("[1 2 3; 4 5 6; 7 8 9] \\ [1; 2; 3]");
+    auto postfix = Parser::ToPostfix(tokens);
+    EXPECT_THROW(Evaluator::Evaluate(postfix), std::runtime_error);
+}
+
+TEST(Integration, NonSquareMatrixSolveThrows) {
+    // [1 2 3; 4 5 6] \ [1; 2] — not square
+    auto tokens = Lexer::Tokenize("[1 2 3; 4 5 6] \\ [1; 2]");
+    auto postfix = Parser::ToPostfix(tokens);
+    EXPECT_THROW(Evaluator::Evaluate(postfix), std::runtime_error);
+}
+
+TEST(Integration, MatrixSizeMismatchThrows) {
+    // [1 2; 3 4] + [1 2 3; 4 5 6] — size mismatch
+    auto tokens = Lexer::Tokenize("[1 2; 3 4] + [1 2 3; 4 5 6]");
+    auto postfix = Parser::ToPostfix(tokens);
+    EXPECT_THROW(Evaluator::Evaluate(postfix), std::runtime_error);
+}
+
+TEST(Integration, MatrixWithExprInEntries) {
+    // Matrix entries can contain sub-expressions
+    // [2^2 1; 1 2^2] should be [4 1; 1 4]
+    auto result = evaluateMatrix("[2^2 1; 1 2^2]");
+    EXPECT_DOUBLE_EQ(result[0][0], 4.0);
+    EXPECT_DOUBLE_EQ(result[1][1], 4.0);
 }

@@ -17,6 +17,7 @@ inline static const std::unordered_map<std::string_view, TokenType> typeMapper =
     {"*", Mul},
     {"/", Div},
     {"^", Pow},
+    {"\\", InvMul},
     {"min", Min},
     {"max", Max},
     {"sin", Sin},

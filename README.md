@@ -39,22 +39,23 @@ Output:  5.0
 
 ## 🚀 Features
 
-| Category              | Supported                                                                            |
-| --------------------- | ------------------------------------------------------------------------------------ |
-| **Arithmetic**        | `+` `-` `*` `/` `^` (power) `mod` (modulus)                                          |
-| **Unary Operators**   | `-` (negation) `+` (identity) — e.g. `-3 + 1`, `10+---10`, `-sqrt(16)`               |
-| **Trigonometry**      | `sin` `cos` `tan` `cot` _(expects degrees)_                                          |
-| **Functions**         | `sqrt` `min` `max` `abs` `log` (base 10) `ln` (natural) `logbase(value, base)`       |
-| **Postfix Operators** | `!` (factorial) `%` (percent) — e.g. `5!`, `80%`                                     |
-| **Constants**         | `pi` (≈ 3.14159) `e` — Euler's number (≈ 2.71828)                                    |
-| **Matrix Literals**   | Inline syntax: `[1 2 3; 4 5 6]` — rows separated by `;`, columns by spaces or commas |
-| **Matrix Arithmetic** | `+` `-` `*` `/` `^` between matrices and/or scalars (mixed-type expressions)         |
-| **Matrix Operations** | Transpose, Identity, element-wise `abs`, and integer power (`A^n`)                   |
-| **Pretty Printing**   | Matrix results are displayed with bracket notation and vertically-centered alignment |
-| **Variadic**          | `min(1,2,3,...,n)` `max(1,2,3,...,n)` — any number of arguments                      |
-| **Nesting**           | Fully nested expressions: `sqrt(min(100, 200, 6, 29, max(5, 2, 4, 1)))`              |
-| **Precedence**        | Correct mathematical operator precedence and associativity                           |
-| **Whitespace**        | Flexible — spaces are optional: `2+3*4` and `2 + 3 * 4` both work                    |
+| Category              | Supported                                                                                |
+| --------------------- | ---------------------------------------------------------------------------------------- |
+| **Arithmetic**        | `+` `-` `*` `/` `^` (power) `mod` (modulus)                                              |
+| **Unary Operators**   | `-` (negation) `+` (identity) — e.g. `-3 + 1`, `10+---10`, `-sqrt(16)`                   |
+| **Trigonometry**      | `sin` `cos` `tan` `cot` _(expects degrees)_                                              |
+| **Functions**         | `sqrt` `min` `max` `abs` `log` (base 10) `ln` (natural) `logbase(value, base)`           |
+| **Postfix Operators** | `!` (factorial) `%` (percent) — e.g. `5!`, `80%`                                         |
+| **Constants**         | `pi` (≈ 3.14159) `e` — Euler's number (≈ 2.71828)                                        |
+| **Matrix Literals**   | Inline syntax: `[1 2 3; 4 5 6]` — rows separated by `;`, columns by spaces or commas     |
+| **Matrix Arithmetic** | `+` `-` `*` `/` `^` between matrices and/or scalars (mixed-type expressions)             |
+| **Matrix Operations** | Transpose, Identity, Determinant, Inverse, element-wise `abs`, and integer power (`A^n`) |
+| **Linear Solve**      | `A \ b` — solve `Ax = b` via LU decomposition with partial pivoting and verification     |
+| **Pretty Printing**   | Matrix results are displayed with bracket notation and vertically-centered alignment     |
+| **Variadic**          | `min(1,2,3,...,n)` `max(1,2,3,...,n)` — any number of arguments                          |
+| **Nesting**           | Fully nested expressions: `sqrt(min(100, 200, 6, 29, max(5, 2, 4, 1)))`                  |
+| **Precedence**        | Correct mathematical operator precedence and associativity                               |
+| **Whitespace**        | Flexible — spaces are optional: `2+3*4` and `2 + 3 * 4` both work                        |
 
 ---
 
@@ -71,7 +72,10 @@ Defines all supported token types using bitmask enums for efficient type checkin
 A header-only template class `Matrix<T>` providing:
 
 - **Arithmetic**: matrix-matrix (`+`, `-`, `*`) and matrix-scalar (`+`, `-`, `*`, `/`) operations
-- **Utilities**: `Transpose()`, `Identity()`, `IsSquare()`, element-wise `abs()`
+- **Utilities**: `Transpose()`, `Identity()`, `IsSquare()`, `IsEmpty()`, element-wise `abs()`
+- **Determinant**: Gaussian elimination with partial pivoting
+- **Inverse**: Gauss-Jordan elimination on augmented `[A | I]` matrix
+- **Solve**: `Matrix::Solve(A, b)` — LU decomposition with partial pivoting, forward/back substitution, and solution verification
 - **Power**: integer matrix exponentiation via repeated multiplication
 - **Stream output**: `operator<<` for formatted display
 
@@ -88,10 +92,11 @@ Implements the **Shunting-Yard algorithm** to convert infix token sequences into
 - Function calls with variadic argument counting
 - **Unary minus and plus detection** — automatically distinguishes between `-` as subtraction and `-` as negation based on context (e.g., `-3`, `5 * -2`, `--3`)
 - **Matrix tokens** — matrix literals pass through as operands alongside numbers
+- **Backslash operator** — `\` is parsed as the `InvMul` operator for `A \ b` linear system notation
 
 ### `Evaluator` — Stack-Based Computation
 
-Walks the postfix token sequence and evaluates it using a stack. Leverages `std::visit` with the `overloaded` pattern to dynamically dispatch unary, binary, and variadic operations. Correctly handles mixed-type operations (e.g., `Matrix * scalar`, `scalar + Matrix`) through `std::variant` visitor dispatch.
+Walks the postfix token sequence and evaluates it using a stack. Leverages `std::visit` with the `overloaded` pattern to dynamically dispatch unary, binary, and variadic operations. Correctly handles mixed-type operations (e.g., `Matrix * scalar`, `scalar + Matrix`) through `std::variant` visitor dispatch. The `InvMul` (`\`) operator calls `Matrix::Solve(A, b)` for linear system solving.
 
 ### `PrettyPrint` — Output Rendering
 
@@ -104,7 +109,7 @@ Renders expression results with vertically-centered alignment. Matrices are disp
 └───────────┬──────────────────────────────────────────┘
             │
    ┌────────▼────────┐
-   │   Lexer.hpp/cpp │──→ Token.hpp ──→ Matrix.h
+   │   Lexer.hpp/cpp │──→ Token.hpp ──→ Matrix.hpp
    └────────┬────────┘
             │
    ┌────────▼────────┐
@@ -112,11 +117,11 @@ Renders expression results with vertically-centered alignment. Matrices are disp
    └────────┬────────┘
             │
    ┌────────▼──────────┐
-   │ Evaluator.hpp/cpp │──→ Token.hpp, Matrix.h
+   │ Evaluator.hpp/cpp │──→ Token.hpp, Matrix.hpp
    └────────┬──────────┘
             │
    ┌────────▼───────────────┐
-   │ PrettyPrint.hpp/cpp    │──→ Token.hpp, Matrix.h
+   │ PrettyPrint.hpp/cpp    │──→ Token.hpp, Matrix.hpp
    └────────────────────────┘
 ```
 
@@ -177,6 +182,13 @@ Matrix expressions:
 [ 1  2  3 ]               [ inf  inf  inf ]
 ```
 
+Linear system solving (`A \ b`):
+
+```
+[ 2  1 ]        [ 8  ]   [ 3 ]
+[ 5  3 ]  \  [  21 ] = [ 2 ]
+```
+
 ---
 
 ## 🧪 Testing
@@ -199,13 +211,14 @@ cd build && ctest --output-on-failure
 
 ### Test Structure
 
-| Test File              | Module     | Tests | Description                                                                                                                    |
-| ---------------------- | ---------- | ----- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `test_token.cpp`       | Token      | 47    | Token type classification, operator info, `toString()`, all `operatorMap` lambdas including log/ln/logbase/abs, and edge cases |
-| `test_lexer.cpp`       | Lexer      | 30    | Number/identifier tokenization, operators, whitespace, full expressions including log/ln/logbase/abs, error cases              |
-| `test_parser.cpp`      | Parser     | 24    | Precedence, parentheses, power associativity, unary minus, functions including log/ln/logbase/abs, postfix ops, errors         |
-| `test_evaluator.cpp`   | Evaluator  | 23    | Binary/unary/variadic ops, log/ln/logbase/abs evaluation, argc validation, multi-step expressions, constants                   |
-| `test_integration.cpp` | End-to-End | 31    | Full pipeline for arithmetic, trig, negation, nesting, log/ln/logbase/abs with nested and combined expressions                 |
+| Test File              | Module     | Description                                                                                                                    |
+| ---------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `test_token.cpp`       | Token      | Token type classification, operator info, `toString()`, all `operatorMap` lambdas including log/ln/logbase/abs, and edge cases |
+| `test_lexer.cpp`       | Lexer      | Number/identifier tokenization, operators, whitespace, matrix literals, `\` operator, malformed matrix errors                  |
+| `test_parser.cpp`      | Parser     | Precedence, parentheses, power associativity, unary minus, functions, matrix postfix conversion, InvMul operator               |
+| `test_evaluator.cpp`   | Evaluator  | Binary/unary/variadic ops, matrix arithmetic, matrix power, InvMul evaluation, argc validation, error cases                    |
+| `test_integration.cpp` | End-to-End | Full pipeline for arithmetic, trig, negation, nesting, matrix operations, linear system solving, matrix error cases            |
+| `test_matrix.cpp`      | Matrix     | Matrix constructors, arithmetic, scalar ops, Transpose, Identity, Determinant, Inverse, Solve, edge cases, malformed input     |
 
 Tests are organized into logical sections within each file:
 
@@ -224,7 +237,7 @@ calculator-engine/
 ├── src/
 │   ├── main.cpp             # Demo driver with sample expressions
 │   ├── Token.hpp            # Token types, operator info & function dispatch
-│   ├── Matrix.h             # Matrix<T> template class (arithmetic, transpose, identity)
+│   ├── Matrix.hpp           # Matrix<T> template class (arithmetic, transpose, determinant, inverse, solve)
 │   ├── Matrix.cpp           # Matrix implementation helpers
 │   ├── Lexer.hpp            # Lexer class declaration + keyword map
 │   ├── Lexer.cpp            # Tokenization implementation (incl. matrix literals)
@@ -241,7 +254,8 @@ calculator-engine/
 │   ├── test_lexer.cpp       # Lexer unit tests
 │   ├── test_parser.cpp      # Parser (Shunting-Yard) unit tests
 │   ├── test_evaluator.cpp   # Evaluator unit tests
-│   └── test_integration.cpp # End-to-end integration tests
+│   ├── test_integration.cpp # End-to-end integration tests
+│   └── test_matrix.cpp      # Matrix class unit tests
 └── .gitignore               # Git ignore rules
 ```
 
@@ -307,6 +321,35 @@ Result: [ 17 ]
         [ 39 ]
 ```
 
+### Linear System Solve Example
+
+Tracing `[2 1; 5 3] \ [8; 21]` (solve Ax = b):
+
+**1. Lexing** — the lexer recognizes matrix literals and `\` as InvMul:
+
+```
+Tokens: [ Matrix(2×2), InvMul, Matrix(2×1) ]
+         [[2,1],[5,3]]          [[8],[21]]
+```
+
+**2. Parsing** — matrices pass through as operands:
+
+```
+Postfix: [ Matrix(2×2), Matrix(2×1), InvMul ]
+```
+
+**3. Evaluation** — `InvMul` calls `Matrix::Solve(A, b)` using LU decomposition:
+
+```
+Stack trace:
+  push [[2,1],[5,3]]  → [A]
+  push [[8],[21]]      → [A, b]
+  apply \              → [x]     (Solve Ax = b via LU)
+
+Result: [ 3 ]
+        [ 2 ]
+```
+
 ### Unary Minus Example
 
 Tracing `-3 + 1`:
@@ -339,6 +382,7 @@ Result: -2
 | **Bitmask enum for `TokenType`**                       | Enables fast category checks via bitwise AND (e.g., `type & MathFunctions`)                                            |
 | **`std::variant<double, Matrix<double>>` for `Value`** | Unified type-safe value representation — the engine seamlessly handles scalars and matrices through the same pipeline  |
 | **`overloaded` visitor pattern**                       | Clean dispatch of mixed-type binary operations (matrix×scalar, scalar+matrix, etc.) without manual type-checking       |
+| **`\` backslash (InvMul) operator**                    | MATLAB-inspired `A \ b` syntax for solving linear systems; dispatches to `Matrix::Solve` via LU decomposition          |
 | **Header-only `Matrix<T>` template**                   | Generic matrix class supporting any numeric type; all operator overloads defined inline for zero-overhead abstractions |
 | **Bracket `[...]` matrix literal syntax**              | MATLAB-inspired inline notation (`[1 2; 3 4]`), parsed directly by the Lexer into `Matrix<double>` tokens              |
 | **Shunting-Yard algorithm**                            | Industry-standard O(n) algorithm for infix-to-postfix conversion                                                       |
@@ -363,7 +407,8 @@ Result: -2
 - [x] Additional functions (`log`, `ln`, `logbase`, `abs`)
 - [x] Matrix support — inline literals, arithmetic, transpose, identity, power
 - [x] Pretty-printed output with vertically-centered matrix rendering
-- [ ] Matrix inverse and determinant
+- [x] Matrix determinant and inverse (Gauss-Jordan elimination)
+- [x] Linear system solver (`A \ b`) via LU decomposition with partial pivoting
 - [ ] Variable support (`x = 5; 2*x + 3`)
 - [ ] Interactive REPL mode
 

@@ -4,7 +4,10 @@
 
 #include "Lexer.hpp"
 #include <cctype>
+#include <cmath>
 
+#include "Evaluator.hpp"
+#include "Parser.hpp"
 
 
 std::vector<Token> Lexer::Tokenize(const std::string_view input_) {
@@ -69,6 +72,9 @@ std::vector<Token> Lexer::tokenizeCore() {
             case '!':
                 tokens.emplace_back(Fact);
                 break;
+            case '\\':
+                tokens.emplace_back(InvMul);
+                break;
             case '[':
                 cursor++;
                 tokens.emplace_back(tokenizeMatrix());
@@ -114,31 +120,40 @@ Token Lexer::tokenizeIdentifier() {
 }
 
 Token Lexer::tokenizeMatrix() {
-    std::vector<std::vector<double>> data = std::vector<std::vector<double>>(1);
+    auto data = std::vector<std::vector<double>>(1);
     if (input[cursor] == ']') throw std::invalid_argument("Empty matrix!");
     size_t row = 0;
     size_t col = 0;
-    const size_t start = cursor;
+    size_t start = cursor;
     while (cursor < input.length() && input[cursor] != ']') {
+        //! REWRITE THE WHOLE LOGIC SO THAT IT WILL ACCEPT EACH [ROW, COL] ENTRY AS A SEPERATE EQUATION
         if (input[cursor] == ';') {
-            if (cursor == start) throw std::invalid_argument("First row empty!");
-            data.emplace_back();
-            row++;
+            if (start == cursor || input[start] == ';') throw std::invalid_argument("Empty matrix!");
+            data[row].push_back(std::get<double>(Evaluator::Evaluate(Parser::ToPostfix(
+                Tokenize(input.substr(start, cursor - start))))));
             cursor++;
+            data.emplace_back();
+            start = cursor;
+            row++;
             continue;
         }
         if (input[cursor] == ',' || input[cursor] == ' ') {
+            if (cursor == start && input[cursor] != ' ') throw std::invalid_argument("Empty matrix!");
+            auto s = input.substr(start, cursor - start);
+            if (s == " " || s.empty()) {
+                cursor++;
+                continue;
+            }
+            data[row].push_back(std::get<double>(Evaluator::Evaluate(Parser::ToPostfix(
+                Tokenize(s)))));
+            if (row == 0) col++;
             cursor++;
-            continue;
+            start = cursor;
         }
-        if (std::isdigit(input[cursor]) || input[cursor] == '.')
-            data[row].push_back(std::get<double>(tokenizeNumber().data));
-        else
-            throw std::invalid_argument("Invalid matrix data!");
-        if (!row) col++;
+        cursor++;
     }
-    if (cursor >= input.length()) throw std::invalid_argument("Unclosed matrix!");
-    Matrix<double> m(row + 1, col);
-    m.SetData(data);
-    return Token(MatrixT, m);
+    if (cursor > input.size()) throw std::invalid_argument("Unclosed matrix!");
+    if (input[cursor] != ']') throw std::invalid_argument("Unclosed matrix!");
+    data[row].push_back(std::get<double>(Evaluator::Evaluate(Parser::ToPostfix(Tokenize(input.substr(start, cursor - start))))));
+    return Token(MatrixT, Matrix(data));
 }

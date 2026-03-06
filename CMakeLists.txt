@@ -9,8 +9,9 @@ add_executable(calculator-engine
         src/Parser.hpp
         src/Evaluator.cpp
         src/Evaluator.hpp
+        src/Token.hpp
         src/Matrix.cpp
-        src/Matrix.h
+        src/Matrix.hpp
         src/IO.h
         src/PrettyPrint.cpp
         src/PrettyPrint.h
@@ -31,6 +32,13 @@ add_library(calculator_lib
     src/Lexer.cpp
     src/Parser.cpp
     src/Evaluator.cpp
+    src/Token.hpp
+    src/Evaluator.hpp
+    src/IO.h
+    src/Lexer.hpp
+        src/Matrix.hpp
+    src/Parser.hpp
+    src/PrettyPrint.h
 )
 
 # 3. Add the test executable
@@ -41,6 +49,7 @@ add_executable(unit_tests
     tests/test_parser.cpp
     tests/test_evaluator.cpp
     tests/test_integration.cpp
+    tests/test_matrix.cpp
 )
 
 # 4. Link GTest and your library

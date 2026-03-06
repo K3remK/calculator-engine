@@ -1,16 +1,15 @@
 //
 // Created by kerem on 3/5/26.
 //
-
 #ifndef CALCULATOR_ENGINE_PRETTYPRINT_H
 #define CALCULATOR_ENGINE_PRETTYPRINT_H
 
-#include <iostream>
 #include <vector>
 #include <string>
 #include <iomanip>
-#include <algorithm>
 
+
+#include "Matrix.hpp"
 #include "Token.hpp"
 
 struct TextBlock {
@@ -25,7 +24,7 @@ public:
     static void print(const std::vector<Token>& tokens);
 private:
     static void printEquation(const std::vector<TextBlock>& blocks);
-    TextBlock operatorToBlock(const std::string& op) const;
+    [[nodiscard]] TextBlock operatorToBlock(const std::string& op) const;
     static TextBlock matrixToBlock(const Matrix<double>& m);
 };
 

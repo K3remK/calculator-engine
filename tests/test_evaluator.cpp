@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <cmath>
 #include "../src/Token.hpp"
 #include "../src/Evaluator.hpp"
 
@@ -228,4 +229,74 @@ TEST(EvaluatorEvaluate, LogBaseWrongArgcThrows) {
     t.argc = 1;
     std::vector<Token> postfix = {Token(Number, 8.0), t};
     EXPECT_THROW(evalPostfix(postfix), std::runtime_error);
+}
+
+// ============================================================
+// Matrix operations via Evaluator
+// ============================================================
+
+static Matrix<double> evalPostfixMatrix(const std::vector<Token>& tokens) {
+    return std::get<Matrix<double>>(Evaluator::Evaluate(tokens));
+}
+
+TEST(EvaluatorEvaluate, MatrixMultiplication) {
+    // [1 2; 3 4] * [5; 6] = [17; 39]
+    Matrix<double> a = {{1, 2}, {3, 4}};
+    Matrix<double> b(std::vector<std::vector<double>>{{5}, {6}});
+    std::vector<Token> postfix = {Token(MatrixT, a), Token(MatrixT, b), Token(Mul)};
+    auto result = evalPostfixMatrix(postfix);
+    EXPECT_NEAR(result[0][0], 17.0, 1e-9);
+    EXPECT_NEAR(result[1][0], 39.0, 1e-9);
+}
+
+TEST(EvaluatorEvaluate, MatrixScalarMultiply) {
+    // [1 2; 3 4] * 2 = [2 4; 6 8]
+    Matrix<double> a = {{1, 2}, {3, 4}};
+    std::vector<Token> postfix = {Token(MatrixT, a), Token(Number, 2.0), Token(Mul)};
+    auto result = evalPostfixMatrix(postfix);
+    EXPECT_DOUBLE_EQ(result[0][0], 2.0);
+    EXPECT_DOUBLE_EQ(result[1][1], 8.0);
+}
+
+TEST(EvaluatorEvaluate, MatrixScalarDivide) {
+    // [10 20; 30 40] / 10 = [1 2; 3 4]
+    Matrix<double> a = {{10, 20}, {30, 40}};
+    std::vector<Token> postfix = {Token(MatrixT, a), Token(Number, 10.0), Token(Div)};
+    auto result = evalPostfixMatrix(postfix);
+    EXPECT_DOUBLE_EQ(result[0][0], 1.0);
+    EXPECT_DOUBLE_EQ(result[1][1], 4.0);
+}
+
+TEST(EvaluatorEvaluate, MatrixPower) {
+    // [1 0; 0 1] ^ 3 = identity (identity to any power is identity)
+    Matrix<double> id = {{1, 0}, {0, 1}};
+    std::vector<Token> postfix = {Token(MatrixT, id), Token(Number, 3.0), Token(Pow)};
+    auto result = evalPostfixMatrix(postfix);
+    EXPECT_DOUBLE_EQ(result[0][0], 1.0);
+    EXPECT_DOUBLE_EQ(result[0][1], 0.0);
+    EXPECT_DOUBLE_EQ(result[1][0], 0.0);
+    EXPECT_DOUBLE_EQ(result[1][1], 1.0);
+}
+
+TEST(EvaluatorEvaluate, MatrixInvMul) {
+    // [2 1; 5 3] \ [8; 21] = [3; 2]
+    Matrix<double> A = {{2, 1}, {5, 3}};
+    Matrix<double> b(std::vector<std::vector<double>>{{8}, {21}});
+    std::vector<Token> postfix = {Token(MatrixT, A), Token(MatrixT, b), Token(InvMul)};
+    auto result = evalPostfixMatrix(postfix);
+    EXPECT_NEAR(result[0][0], 3.0, 1e-9);
+    EXPECT_NEAR(result[1][0], 2.0, 1e-9);
+}
+
+TEST(EvaluatorEvaluate, InvMulScalarThrows) {
+    // InvMul between scalars should throw
+    std::vector<Token> postfix = {Token(Number, 2.0), Token(Number, 3.0), Token(InvMul)};
+    EXPECT_THROW(evalPostfix(postfix), std::invalid_argument);
+}
+
+TEST(EvaluatorEvaluate, ModulusMatrixThrows) {
+    // Modulus with matrix should throw
+    Matrix<double> a = {{1, 2}, {3, 4}};
+    std::vector<Token> postfix = {Token(MatrixT, a), Token(Number, 2.0), Token(Mod)};
+    EXPECT_THROW(Evaluator::Evaluate(postfix), std::invalid_argument);
 }

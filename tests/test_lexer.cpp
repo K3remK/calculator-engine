@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <cmath>
 #include "../src/Lexer.hpp"
 
 // Helper: collect token types from a tokenized string
@@ -180,4 +181,79 @@ TEST(LexerTokenize, InvalidCharacterThrows) {
 TEST(LexerTokenize, InvalidIdentifierThrows) {
     EXPECT_THROW(Lexer::Tokenize("foo"), std::out_of_range);
     EXPECT_THROW(Lexer::Tokenize("xyz"), std::out_of_range);
+}
+
+// ============================================================
+// Matrix literal tokenization
+// ============================================================
+
+TEST(LexerTokenize, MatrixLiteralSpaces) {
+    auto tokens = Lexer::Tokenize("[1 2; 3 4]");
+    ASSERT_EQ(tokens.size(), 1u);
+    EXPECT_EQ(tokens[0].type, MatrixT);
+    auto& m = std::get<Matrix<double>>(tokens[0].data);
+    EXPECT_EQ(m.GetM(), 2u);
+    EXPECT_EQ(m.GetN(), 2u);
+    EXPECT_DOUBLE_EQ(m[0][0], 1.0);
+    EXPECT_DOUBLE_EQ(m[0][1], 2.0);
+    EXPECT_DOUBLE_EQ(m[1][0], 3.0);
+    EXPECT_DOUBLE_EQ(m[1][1], 4.0);
+}
+
+TEST(LexerTokenize, MatrixLiteralCommas) {
+    auto tokens = Lexer::Tokenize("[1, 2; 3, 4]");
+    ASSERT_EQ(tokens.size(), 1u);
+    EXPECT_EQ(tokens[0].type, MatrixT);
+    auto& m = std::get<Matrix<double>>(tokens[0].data);
+    EXPECT_DOUBLE_EQ(m[0][0], 1.0);
+    EXPECT_DOUBLE_EQ(m[1][1], 4.0);
+}
+
+TEST(LexerTokenize, MatrixColumnVector) {
+    auto tokens = Lexer::Tokenize("[1; 2; 3]");
+    ASSERT_EQ(tokens.size(), 1u);
+    auto& m = std::get<Matrix<double>>(tokens[0].data);
+    EXPECT_EQ(m.GetM(), 3u);
+    EXPECT_EQ(m.GetN(), 1u);
+}
+
+TEST(LexerTokenize, MatrixRowVector) {
+    auto tokens = Lexer::Tokenize("[1 2 3]");
+    ASSERT_EQ(tokens.size(), 1u);
+    auto& m = std::get<Matrix<double>>(tokens[0].data);
+    EXPECT_EQ(m.GetM(), 1u);
+    EXPECT_EQ(m.GetN(), 3u);
+}
+
+TEST(LexerTokenize, MatrixWithOperator) {
+    // [1 2; 3 4] * [5; 6] should produce: MatrixT Mul MatrixT
+    auto tokens = Lexer::Tokenize("[1 2; 3 4] * [5; 6]");
+    ASSERT_EQ(tokens.size(), 3u);
+    EXPECT_EQ(tokens[0].type, MatrixT);
+    EXPECT_EQ(tokens[1].type, Mul);
+    EXPECT_EQ(tokens[2].type, MatrixT);
+}
+
+TEST(LexerTokenize, InvMulOperator) {
+    auto tokens = Lexer::Tokenize("[1 2; 3 4] \\ [5; 6]");
+    ASSERT_EQ(tokens.size(), 3u);
+    EXPECT_EQ(tokens[0].type, MatrixT);
+    EXPECT_EQ(tokens[1].type, InvMul);
+    EXPECT_EQ(tokens[2].type, MatrixT);
+}
+
+// ============================================================
+// Malformed matrix errors
+// ============================================================
+
+TEST(LexerTokenize, EmptyMatrixThrows) {
+    EXPECT_THROW(Lexer::Tokenize("[]"), std::invalid_argument);
+}
+
+TEST(LexerTokenize, MalformedMatrixEmptyRowThrows) {
+    EXPECT_THROW(Lexer::Tokenize("[;1]"), std::invalid_argument);
+}
+
+TEST(LexerTokenize, MalformedMatrixEmptyCommaThrows) {
+    EXPECT_THROW(Lexer::Tokenize("[,1;2]"), std::invalid_argument);
 }
