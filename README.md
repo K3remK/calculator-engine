@@ -39,23 +39,23 @@ Output:  5.0
 
 ## 🚀 Features
 
-| Category              | Supported                                                                                |
-| --------------------- | ---------------------------------------------------------------------------------------- |
-| **Arithmetic**        | `+` `-` `*` `/` `^` (power) `mod` (modulus)                                              |
-| **Unary Operators**   | `-` (negation) `+` (identity) — e.g. `-3 + 1`, `10+---10`, `-sqrt(16)`                   |
-| **Trigonometry**      | `sin` `cos` `tan` `cot` _(expects degrees)_                                              |
-| **Functions**         | `sqrt` `min` `max` `abs` `log` (base 10) `ln` (natural) `logbase(value, base)`           |
-| **Postfix Operators** | `!` (factorial) `%` (percent) — e.g. `5!`, `80%`                                         |
-| **Constants**         | `pi` (≈ 3.14159) `e` — Euler's number (≈ 2.71828)                                        |
-| **Matrix Literals**   | Inline syntax: `[1 2 3; 4 5 6]` — rows separated by `;`, columns by spaces or commas     |
-| **Matrix Arithmetic** | `+` `-` `*` `/` `^` between matrices and/or scalars (mixed-type expressions)             |
-| **Matrix Operations** | Transpose, Identity, Determinant, Inverse, element-wise `abs`, and integer power (`A^n`) |
-| **Linear Solve**      | `A \ b` — solve `Ax = b` via LU decomposition with partial pivoting and verification     |
-| **Pretty Printing**   | Matrix results are displayed with bracket notation and vertically-centered alignment     |
-| **Variadic**          | `min(1,2,3,...,n)` `max(1,2,3,...,n)` — any number of arguments                          |
-| **Nesting**           | Fully nested expressions: `sqrt(min(100, 200, 6, 29, max(5, 2, 4, 1)))`                  |
-| **Precedence**        | Correct mathematical operator precedence and associativity                               |
-| **Whitespace**        | Flexible — spaces are optional: `2+3*4` and `2 + 3 * 4` both work                        |
+| Category              | Supported                                                                                                                                                          |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Arithmetic**        | `+` `-` `*` `/` `^` (power) `mod` (modulus)                                                                                                                        |
+| **Unary Operators**   | `-` (negation) `+` (identity) — e.g. `-3 + 1`, `10+---10`, `-sqrt(16)`                                                                                             |
+| **Trigonometry**      | `sin` `cos` `tan` `cot` _(expects degrees)_                                                                                                                        |
+| **Functions**         | `sqrt` `min` `max` `abs` `log` (base 10) `ln` (natural) `logbase(value, base)`                                                                                     |
+| **Postfix Operators** | `!` (factorial) `%` (percent) — e.g. `5!`, `80%`                                                                                                                   |
+| **Constants**         | `pi` (≈ 3.14159) `e` — Euler's number (≈ 2.71828)                                                                                                                  |
+| **Matrix Literals**   | Inline syntax: `[1 2 3; 4 5 6]` — rows separated by `;`, columns by spaces or commas. Each entry can be a full expression (e.g. `[2^2 cos(0); sin(0)+1 sqrt(16)]`) |
+| **Matrix Arithmetic** | `+` `-` `*` `/` `^` between matrices and/or scalars (mixed-type expressions)                                                                                       |
+| **Matrix Operations** | Transpose, Identity, Determinant, Inverse, element-wise `abs`, and integer power (`A^n`)                                                                           |
+| **Linear Solve**      | `A \ b` — solve `Ax = b` via LU decomposition with partial pivoting and verification                                                                               |
+| **Pretty Printing**   | Matrix results are displayed with bracket notation and vertically-centered alignment                                                                               |
+| **Variadic**          | `min(1,2,3,...,n)` `max(1,2,3,...,n)` — any number of arguments                                                                                                    |
+| **Nesting**           | Fully nested expressions: `sqrt(min(100, 200, 6, 29, max(5, 2, 4, 1)))`                                                                                            |
+| **Precedence**        | Correct mathematical operator precedence and associativity                                                                                                         |
+| **Whitespace**        | Flexible — spaces are optional: `2+3*4` and `2 + 3 * 4` both work                                                                                                  |
 
 ---
 
@@ -81,7 +81,7 @@ A header-only template class `Matrix<T>` providing:
 
 ### `Lexer` — Tokenization
 
-Scans the raw input string character-by-character and produces a flat sequence of `Token` objects. Handles multi-character identifiers (e.g., `sqrt`, `min`), floating-point number literals, special symbols like `!` and `%`, and **matrix literals** enclosed in `[ ]` with `;` as the row separator.
+Scans the raw input string character-by-character and produces a flat sequence of `Token` objects. Handles multi-character identifiers (e.g., `sqrt`, `min`), floating-point number literals, special symbols like `!` and `%`, and **matrix literals** enclosed in `[ ]` with `;` as the row separator. Each matrix entry is recursively tokenized, parsed, and evaluated as an independent expression — so entries like `2^2`, `cos(0)`, or `sqrt(16)/5*5` are fully supported.
 
 ### `Parser` — Infix to Postfix Conversion
 
@@ -180,6 +180,16 @@ Matrix expressions:
 [ 1  2  3 ]               [ inf  inf  inf ]
 [ 1  2  3 ] ^  1000000  = [ inf  inf  inf ]
 [ 1  2  3 ]               [ inf  inf  inf ]
+```
+
+Matrix entries as expressions — each cell is evaluated independently:
+
+```
+[2^2  cos(0)  sin(0); cos(0)  2^2  cos(0); sin(0)  cos(0)  2^2] \ [6; 12; 14]
+
+→  [ 4  1  0 ]       [ 6  ]   [ 1 ]
+   [ 1  4  1 ]  \  [ 12 ] = [ 2 ]
+   [ 0  1  4 ]       [ 14 ]   [ 3 ]
 ```
 
 Linear system solving (`A \ b`):
