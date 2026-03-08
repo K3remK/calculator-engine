@@ -190,6 +190,13 @@ Matrix entries as expressions — each cell is evaluated independently:
 →  [ 4  1  0 ]       [ 6  ]   [ 1 ]
    [ 1  4  1 ]  \  [ 12 ] = [ 2 ]
    [ 0  1  4 ]       [ 14 ]   [ 3 ]
+
+[sqrt(16)/5*5  cos(0)  sin(0); cos(0)  sqrt(16)/5*5  cos(0); sin(0)  cos(0)  sqrt(16)/5*5] \\ [sqrt(16)/5*5+cos(0)*2+sin(0); cos(0)+sqrt(16)/5*5*2+cos(0); sin(0)+cos(0)*2+sqrt(16)/5*5]
+
+→  [ 4  1  0 ]   [  6 ]   [ 1 ]
+   [ 1  4  1 ] \ [ 10 ] = [ 2 ]
+   [ 0  1  4 ]   [  6 ]   [ 1 ]
+
 ```
 
 Linear system solving (`A \ b`):
