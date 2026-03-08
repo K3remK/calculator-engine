@@ -6,6 +6,7 @@ Testing/
 build/
 .idea/
 design_analysis.md
+Refining Calculator Engine.md
 
 CMakeCache.txt
 *.cmake

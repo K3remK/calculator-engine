@@ -90,7 +90,7 @@ Value Evaluator::maxVariadic(const std::vector<Value> &operands) {
             using T = std::decay_t<decltype(a)>;
             if constexpr (std::is_same_v<T, int>) return static_cast<double>(a);
             else if constexpr (std::is_same_v<T, double>) return a;
-            else throw std::invalid_argument("min() supports only int/double arguments");
+            else throw std::invalid_argument("max() supports only int/double arguments");
         }, v);
 
         if (!initialized) { currentMax = x; initialized = true; }

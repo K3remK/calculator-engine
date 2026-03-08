@@ -40,7 +40,7 @@ enum TokenType : uint64_t {
     InvMul              = 1ULL << 28,
     Equality            = 1ULL << 29,   // TODO
     Assignment          = 1ULL << 30,   // TODO
-    Variable            = 1ULL << 31   // TODO
+    Variable            = 1ULL << 31    // TODO
 };
 
 // ! When you add a new function or operator !!!! Dont forget to update the IsOperator and IsFunction functions
@@ -91,7 +91,7 @@ inline static const std::unordered_map<TokenType, OperatorInfo> operatorMap = {
 using Value = std::variant<double, Matrix<double>>;
 
 struct Token {
-    mutable TokenType type;
+    TokenType type;
     Value data;
     // ? can be even a vector in the future for multidimensional calculations
     std::size_t argc = 0;

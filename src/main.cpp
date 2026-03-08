@@ -44,7 +44,7 @@ int main()
         "sqrt(16) / 5",
         "sin(0) + cos(0)",
         "([1 2 3; 1 2 3; 1 2 3] * [1 2 3;1 2 3;1 2 3]) / 10",
-        "([1, 2, 3; 1, 2, 3; 1, 2, 3] * [1, 2, 3;1, 2, 3;1, 2, 3]) / 10",
+        "([1, 2 3; 1, 2, 3; 1, 2, 3] * [1, 2, 3;1, 2, 3;1, 2, 3]) / 10",
         "[1 2 3; 1 2 3; 1 2 3]^1000000",
         "[1 -2 3; 2 1 -1; -1 3 2] \\ [7; 2; -3]",                              // x = [2; -1; 1]
         "[2 1; 5 3] \\ [8; 21]",                                                 // x = [3; 2]
@@ -56,7 +56,6 @@ int main()
         "[9 1 2 3 1; 1 8 1 2 3; 2 1 7 1 2; 3 2 1 6 1; 1 3 2 1 5] \\ [16; 15; 13; 13; 12]", // x = [1; 1; 1; 1; 1]
         "[1 2 3; 4 5 6; 7 8 9] \\ [1; 2; 3]",                                   // throws: singular
         "[1 2 3; 4 5 6] \\ [1; 2]",                                               // throws: not square
-
         // x = [1; 2; 3]  —  A is diagonal-dominant, guaranteed non-singular
         "[2^2  cos(0)  sin(0); cos(0)  2^2  cos(0); sin(0)  cos(0)  2^2] \\ [2^2*1+cos(0)*2+sin(0)*3; cos(0)*1+2^2*2+cos(0)*3; sin(0)*1+cos(0)*2+2^2*3]",
         // resolves to: [4 1 0; 1 4 1; 0 1 4] \ [6; 12; 14]
@@ -73,7 +72,7 @@ int main()
 
         // x = [2; 2; 2; 2]
         "[2^2  cos(0)  sin(0)  cos(0); cos(0)  2^2  cos(0)  sin(0); sin(0)  cos(0)  2^2  cos(0); cos(0)  sin(0)  cos(0)  2^2] \\ [2^2*2+cos(0)*2+sin(0)*2+cos(0)*2; cos(0)*2+2^2*2+cos(0)*2+sin(0)*2; sin(0)*2+cos(0)*2+2^2*2+cos(0)*2; cos(0)*2+sin(0)*2+cos(0)*2+2^2*2]",
-
+        "1 \\ 10",
     };
 
     Matrix<double> m(3, 3, 1);
@@ -84,11 +83,8 @@ int main()
     };
     m.SetData(data);
 
-    Matrix<double> b(3, 1);
-    b[0][0] = 1;
-    b[1][0] = -1;
-    b[2][0] = 3;
-    //auto x = Matrix<double>::Solve(m, b);
+    Matrix<double> b = {{1}, {-1}, {3}};
+    auto x = Matrix<double>::Solve(m, b);
 
     const Matrix<double> A = {
         {-20000, 10000, 0, 0},
@@ -98,7 +94,7 @@ int main()
     };
     const Matrix<double> b2 = {{-10}, {0}, {0}, {0}};
 
-    //PrettyPrint::print(std::vector(1, Token(MatrixT, x)));
+    PrettyPrint::print(std::vector(1, Token(MatrixT, x)));
     PrettyPrint::print(std::vector(1,  Token(MatrixT, Matrix<double>::Solve(A, b2) * 1000)));
 
     Matrix<double> m2(3, 3, 1);
@@ -122,6 +118,11 @@ int main()
     t = m.Identity();
 
     const std::vector v = { Token(MatrixT, m), Token(Pow), Token(Number, 2.0)};
+
+    Matrix<double> m4(1000, 1000, 1);
+    Matrix<double> m5(1000, 1, 1);
+
+    PrettyPrint::print(std::vector(1, Token(MatrixT, m4 * m5)));
 
     //auto x = (Evaluator::Evaluate(Parser::ToPostfix(v)));
 
@@ -163,7 +164,7 @@ int main()
     std::vector<std::string> hist;
 
     bool run = false;
-    size_t index = 0;
+    int index = 0;
 
     while (run) {
         bool exec = false;

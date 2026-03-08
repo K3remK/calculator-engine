@@ -4,14 +4,13 @@
 
 #include "Parser.hpp"
 
-#include <cassert>
 #include <queue>
 #include <stack>
 
 
 // TODO: make this function smaller by implementing new smaller validation functions like validate number or function etc.
 
-std::vector<Token> Parser::ToPostfix(const std::vector<Token>& infixTokens) {
+std::vector<Token> Parser::ToPostfix(std::vector<Token>& infixTokens) {
 
     auto stack = std::stack<Token>();
     auto argcStack = std::stack<int>();
@@ -63,10 +62,10 @@ std::vector<Token> Parser::ToPostfix(const std::vector<Token>& infixTokens) {
             stack.push(token);
         }
         else if (token.type == RightParen) {
-            assert(!stack.empty());
+            if (stack.empty()) throw std::runtime_error("Mismatched parentheses");
 
             while (!stack.empty() && stack.top().type != LeftParen) {
-                assert(!stack.empty());
+                if (stack.empty()) throw std::runtime_error("Mismatched parentheses!");
 
                 auto t = stack.top();
 
@@ -74,7 +73,7 @@ std::vector<Token> Parser::ToPostfix(const std::vector<Token>& infixTokens) {
                 stack.pop();
             }
 
-            assert(stack.top().type == LeftParen);
+            if (stack.top().type != LeftParen) throw std::runtime_error("Mismatched parentheses!");
             stack.pop(); // Discard the LeftParen
 
             // *If the token before the parentheses was a function, pop it to the queue
@@ -102,11 +101,11 @@ std::vector<Token> Parser::ToPostfix(const std::vector<Token>& infixTokens) {
                 //? maybe detecting the unary minus function inside the lexer class might be better for compatibility
                 if (token.type == Sub) {
                     token = Token(UnaryMinus);
-                    infixTokens[index].type = token.type;
+                    infixTokens[index] = token;
                 }
                 else if (token.type == Add) {
                     token = Token(UnaryPlus);
-                    infixTokens[index].type = token.type;
+                    infixTokens[index] = token;
                 }
                 else
                     //* if it is not Sub or Add operator that means there is a miss usage of an operator (3 + * 3) throw an error
@@ -129,7 +128,9 @@ std::vector<Token> Parser::ToPostfix(const std::vector<Token>& infixTokens) {
         if (stack.top().type & (LeftParen | RightParen)) {
             throw std::runtime_error("Mismatched parentheses");
         }
-        assert(stack.top().type != LeftParen);
+        if (stack.top().type == LeftParen) {
+            throw std::runtime_error("Mismatched parentheses!");
+        }
         queue.emplace_back(stack.top());
         stack.pop();
     }

@@ -115,7 +115,7 @@ TEST(ParserToPostfix, UnaryFunction) {
 
 TEST(ParserToPostfix, VariadicFunctionArgcTracking) {
     // max(1, 2, 3) → 1 2 3 max (with argc=3)
-    const auto infix = Lexer::Tokenize("max(1, 2, 3)");
+    auto infix = Lexer::Tokenize("max(1, 2, 3)");
     const auto postfix = Parser::ToPostfix(infix);
 
     // Last token should be Max with argc == 3
@@ -159,7 +159,7 @@ TEST(ParserToPostfix, AbsUnaryFunction) {
 
 TEST(ParserToPostfix, LogBaseArgcTracking) {
     // logbase(8, 2) → 8 2 logbase (with argc=2)
-    const auto infix = Lexer::Tokenize("logbase(8, 2)");
+    auto infix = Lexer::Tokenize("logbase(8, 2)");
     const auto postfix = Parser::ToPostfix(infix);
 
     ASSERT_FALSE(postfix.empty());

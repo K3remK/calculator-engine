@@ -98,7 +98,18 @@ public:
         return *this;
     }
 
-    void SetData(const std::vector<std::vector<double>> &data) {
+    // Move assignment
+    Matrix& operator=(Matrix &&other) noexcept {
+        if (this == &other) return *this;
+        M = other.M;
+        N = other.N;
+        m_Data = std::move(other.m_Data);
+        return *this;
+    }
+
+    ~Matrix() = default;
+
+    void SetData(const std::vector<std::vector<T>> &data) {
         if (M != data.size()) throw std::runtime_error("Matrix size mismatch!");
         for (const auto & i : data) {
             if (N != i.size()) throw std::runtime_error("Matrix size mismatch!");
@@ -514,7 +525,7 @@ Matrix<T> operator-(A val, const Matrix<T>& m) {
 
 template<typename T, typename A>
 Matrix<T> operator/(A val, const Matrix<T>& m) {
-    return m / val;
+    return val * m.Inverse();
 }
 
 template<typename T>

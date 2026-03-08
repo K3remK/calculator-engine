@@ -10,7 +10,7 @@
 
 class Parser {
     public:
-        static std::vector<Token> ToPostfix(const std::vector<Token>& infixTokens);
+        static std::vector<Token> ToPostfix(std::vector<Token>& infixTokens);
 };
 
 

@@ -36,9 +36,11 @@ add_library(calculator_lib
     src/Evaluator.hpp
     src/IO.h
     src/Lexer.hpp
-        src/Matrix.hpp
+    src/Matrix.hpp
     src/Parser.hpp
     src/PrettyPrint.h
+    src/Matrix.cpp
+    src/PrettyPrint.cpp
 )
 
 # 3. Add the test executable
