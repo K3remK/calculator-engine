@@ -7,6 +7,10 @@ build/
 .idea/
 design_analysis.md
 Refining Calculator Engine.md
+analysis_and_refinements.md
+Analyzing Project Architecture.md
+todos.txt
+Debug/
 
 CMakeCache.txt
 *.cmake
