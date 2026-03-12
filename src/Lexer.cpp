@@ -10,9 +10,9 @@
 #include "Parser.hpp"
 
 
-std::vector<Token> Lexer::Tokenize(const std::string_view input_) {
+std::vector<Token> Lexer::Tokenize(const std::string_view input_, std::unordered_map<std::string, Value> &variables) {
     Lexer lexer(input_);
-    return lexer.tokenizeCore();
+    return lexer.tokenizeCore(variables);
 }
 
 Lexer::Lexer(const std::string_view& input)
@@ -20,7 +20,7 @@ Lexer::Lexer(const std::string_view& input)
 {
 }
 
-std::vector<Token> Lexer::tokenizeCore() {
+std::vector<Token> Lexer::tokenizeCore(std::unordered_map<std::string, Value> &variables) {
     std::vector<Token> tokens;
 
     while (cursor < input.length()) {
@@ -43,41 +43,44 @@ std::vector<Token> Lexer::tokenizeCore() {
 
         switch (currentChar) {
             case '+':
-                tokens.emplace_back(Add);
+                tokens.emplace_back(FuncOpToken(Add));
                 break;
             case '-':
-                tokens.emplace_back(Sub);
+                tokens.emplace_back(FuncOpToken(Sub));
                 break;
             case '*':
-                tokens.emplace_back(Mul);
+                tokens.emplace_back(FuncOpToken(Mul));
                 break;
             case '%':
-                tokens.emplace_back(Percent);
+                tokens.emplace_back(FuncOpToken(Percent));
                 break;
             case '/':
-                tokens.emplace_back(Div);
+                tokens.emplace_back(FuncOpToken(Div));
                 break;
             case '^':
-                tokens.emplace_back(Pow);
+                tokens.emplace_back(FuncOpToken(Pow));
                 break;
             case '(':
-                tokens.emplace_back(LeftParen);
+                tokens.emplace_back(FuncOpToken(LeftParen));
                 break;
             case ')':
-                tokens.emplace_back(RightParen);
+                tokens.emplace_back(FuncOpToken(RightParen));
                 break;
             case ',':
-                tokens.emplace_back(Comma);
+                tokens.emplace_back(FuncOpToken(Comma));
                 break;
             case '!':
-                tokens.emplace_back(Fact);
+                tokens.emplace_back(FuncOpToken(Fact));
                 break;
             case '\\':
-                tokens.emplace_back(InvMul);
+                tokens.emplace_back(FuncOpToken(InvMul));
                 break;
             case '[':
                 cursor++;
-                tokens.emplace_back(tokenizeMatrix());
+                tokens.emplace_back(tokenizeRawMatrix(variables));
+                break;
+            case '=':
+                tokens.emplace_back(FuncOpToken(Assignment));
                 break;
             default:
                 //* Unknown symbol
@@ -96,7 +99,7 @@ Token Lexer::tokenizeNumber() {
     }
 
     const std::string_view raw = input.substr(start, cursor - start);
-    return Token(Number, std::stod(std::string(raw)));
+    return NumberToken(std::stod(std::string(raw)));
 }
 
 Token Lexer::tokenizeIdentifier() {
@@ -110,27 +113,28 @@ Token Lexer::tokenizeIdentifier() {
     try {
         const auto type = typeMapper.at(std::string(raw));
         if (type == PI)
-            return Token(PI, M_PI);
+            return NumberToken(M_PI);
         if (type == Euler)
-            return Token(Euler, M_E);
-        return Token(type);
+            return NumberToken(M_E);
+        return FuncOpToken(type);
     } catch (const std::out_of_range& e) {
-        throw std::out_of_range("Invalid identifier: " + std::string(raw));
+        return VarToken(raw);    // Variable token type
+        /* throw std::out_of_range("Invalid identifier: " + std::string(raw)); */
     }
 }
 
-Token Lexer::tokenizeMatrix() {
-    auto data = std::vector<std::vector<double>>(1);
+Token Lexer::tokenizeRawMatrix(std::unordered_map<std::string, Value> &variables) {
+    auto data = std::vector<std::vector<std::string_view>>();
     if (input[cursor] == ']') throw std::invalid_argument("Empty matrix!");
     size_t row = 0;
     size_t col = 0;
     size_t start = cursor;
     while (cursor < input.length() && input[cursor] != ']') {
-        //! REWRITE THE WHOLE LOGIC SO THAT IT WILL ACCEPT EACH [ROW, COL] ENTRY AS A SEPERATE EQUATION
         if (input[cursor] == ';') {
             if (start == cursor || input[start] == ';') throw std::invalid_argument("Empty matrix!");
-            auto tokens = Tokenize(input.substr(start, cursor - start));
-            data[row].push_back(std::get<double>(Evaluator::Evaluate(Parser::ToPostfix(tokens))));
+            auto rowEntry = input.substr(start, cursor - start);
+            //! HACK : FIX THIS BY SEPERATING THIS PROCESS INTO SOME SUBPARSER
+            data[row].emplace_back(rowEntry);
             cursor++;
             data.emplace_back();
             start = cursor;
@@ -144,8 +148,7 @@ Token Lexer::tokenizeMatrix() {
                 cursor++;
                 continue;
             }
-            auto tokens = Tokenize(s);
-            data[row].push_back(std::get<double>(Evaluator::Evaluate(Parser::ToPostfix(tokens))));
+            data[row].emplace_back(s);
             if (row == 0) col++;
             cursor++;
             start = cursor;
@@ -154,7 +157,7 @@ Token Lexer::tokenizeMatrix() {
     }
     if (cursor > input.size()) throw std::invalid_argument("Unclosed matrix!");
     if (input[cursor] != ']') throw std::invalid_argument("Unclosed matrix!");
-    auto tokens = Tokenize(input.substr(start, cursor - start));
-    data[row].push_back(std::get<double>(Evaluator::Evaluate(Parser::ToPostfix(tokens))));
-    return Token(MatrixT, Matrix(data));
+    auto rowEntry = input.substr(start, cursor - start);
+    data[row].emplace_back(rowEntry);
+    return RawMatrixToken(std::make_unique<Matrix<std::string_view>>(Matrix(data)));
 }

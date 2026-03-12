@@ -21,12 +21,12 @@ enum Color {
     WHITE = 37,
 };
 
-static void print(const std::string& text, const Color bgColor, const Color fgColor) {
+static inline void print(const std::string& text, const Color bgColor, const Color fgColor) {
     std::cout << "\033[" + std::to_string(bgColor + 10) + "m\033[" + std::to_string(fgColor) + "m" << text << "\033[0m";
 }
 
 namespace io {
-    static int getch() {
+    static inline int getch() {
 #ifdef _WIN32
         return _getch(); // On Windows, this is already non-canonical
 #else

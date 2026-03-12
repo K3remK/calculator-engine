@@ -7,22 +7,40 @@
 
 #include "Token.hpp"
 
+
+
+// ─── Token Variant Helpers ──────────────────────────────────────────────────
+// Every variant alternative (NumberToken, MatrixToken, RawMatrixToken,
+// VarToken, FuncOpToken) carries a `.type` field of type TokenType.
+// These helpers let us query it without verbose std::visit boilerplate.
+
+/// Extract the TokenType stored inside any Token variant alternative.
+TokenType GetTokenType(const Token& token);
+
+/// Return true if the token's type has any bit in common with `mask`.
+bool TokenTypeMatches(const Token& token, uint64_t mask);
+
+/// Retrieve the OperatorInfo for a token that is an operator or function.
+/// Throws std::invalid_argument if the token's type is not in operatorMap.
+const OperatorInfo& GetOperatorInfoFromToken(const Token& token);
+
+
 class Evaluator {
 public:
-    static Value Evaluate(const std::vector<Token>& postfixTokens);
+    static Token Evaluate(std::vector<Token>& postfixTokens, std::unordered_map<std::string_view, Value> &variable_table);
 private:
 
     template<class ... Ts> struct overloaded : Ts... { using Ts::operator()...; };
     template<class ... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
-    static void validate(const Token& token);
-    static Value evalBinary(TokenType op, const Value& left, const Value& right);
-    static Value evalUnary(TokenType op, const Value& operand);
-    static Value evalVariadic(TokenType op, const std::vector<Value>& operands);
-    static Value evaluateMod(const Value& left, const Value& right);
-    static Value factorial(const Value& operand);
-    static Value minVariadic(const std::vector<Value>& operands);
-    static Value maxVariadic(const std::vector<Value>& operands);
+    static void validate(const std::vector<Token>& token);
+    static Token evalBinary(TokenType op, const Token& left, const Token& right);
+    static Token evalUnary(TokenType op, const Token& operand);
+    static Token evalVariadic(TokenType op, const std::vector<double>& operands);
+    static Token evaluateMod(const Token& left, const Token& right);
+    static double factorial(const Token& operand);
+    static Token minVariadic(std::vector<double>& operands);
+    static Token maxVariadic(std::vector<double>& operands);
 };
 
 
