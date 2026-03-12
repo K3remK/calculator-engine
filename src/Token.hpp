@@ -5,8 +5,7 @@
 #include <ostream>
 #include <unordered_map>
 #include <iomanip>
-#include <memory>
-
+#include <cstdint>
 #include "Matrix.hpp"
 
 enum TokenType : uint64_t {
@@ -38,30 +37,22 @@ enum TokenType : uint64_t {
     Abs                 = 1ULL << 25,
     Euler               = 1ULL << 26,
     MatrixT             = 1ULL << 27,
-    RawMatrixT          = 1ULL << 28,
-    InvMul              = 1ULL << 29,
+    InvMul              = 1ULL << 28,
+    Equality            = 1ULL << 29,   // TODO
     Assignment          = 1ULL << 30,   // TODO
-    Var                 = 1ULL << 31    // TODO
-};
-
-enum TokenT {
-    FuncOpTT,
-    NumberTT,
-    RawMatrixTT,
-    NMatrixTT,
-    VarTokenTT
+    Variable            = 1ULL << 31    // TODO
 };
 
 // ! When you add a new function or operator !!!! Dont forget to update the IsOperator and IsFunction functions
 // ! Trigonometric functions expects degrees not radians
 
-constexpr uint64_t MathFunctions            = Sin | Cos | Tan | Cot | Sqrt | Max | Min | Log | Ln | LogBase | Abs;
-constexpr uint64_t Numbers                  = Number | PI | Euler | MatrixT | Var;
-constexpr uint64_t PostfixOperators         = Fact | Percent;
-constexpr uint64_t Operators                = Add | Sub | Mul | Div | Max | UnaryMinus | UnaryPlus | InvMul;
-constexpr uint64_t InfixOperators           = Add | Sub | Mul | Div | Pow | InvMul | Assignment;
-constexpr uint64_t UnaryFunctions           = Sin | Cos | Tan | Cot | Sqrt | Log | Ln | Abs | UnaryPlus | UnaryMinus | Fact | Percent;
-constexpr uint64_t VariadicFunctions        = Max | Min;
+constexpr uint32_t MathFunctions            = Sin | Cos | Tan | Cot | Sqrt | Max | Min | Log | Ln | LogBase | Abs;
+constexpr uint32_t Numbers                  = Number | PI | Euler | MatrixT;
+constexpr uint32_t PostfixOperators         = Fact | Percent;
+constexpr uint32_t Operators                = Add | Sub | Mul | Div | Max | UnaryMinus | UnaryPlus | InvMul;
+constexpr uint32_t InfixOperators           = Add | Sub | Mul | Div | Pow | InvMul;
+constexpr uint32_t UnaryFunctions           = Sin | Cos | Tan | Cot | Sqrt | Log | Ln | Abs | UnaryPlus | UnaryMinus | Fact | Percent;
+constexpr uint32_t VariadicFunctions        = Max | Min;
 
 
 struct OperatorInfo {
@@ -70,7 +61,7 @@ struct OperatorInfo {
     int expectedArgc;
 };
 
-inline const std::unordered_map<TokenType, OperatorInfo> operatorMap = {
+inline static const std::unordered_map<TokenType, OperatorInfo> operatorMap = {
     {Add            ,           {0, true,  2}},
     {Sub            ,           {0, true,  2}},
     {Mod            ,           {1, true,  2}},
@@ -93,141 +84,134 @@ inline const std::unordered_map<TokenType, OperatorInfo> operatorMap = {
     {Ln             ,           {3, false, 1}},
     {LogBase        ,           {3, false, 2}},
     {Abs            ,           {3, false, 1}},
-    {Assignment     ,           {-1, false, 2}},    // Highest precedence so that the expression on the right side will be evaluated first
 };
 
-using Value = std::variant<double, std::unique_ptr<Matrix<double>>>;
+// This variant can hold a double, an int, or a complex number.
+// The memory footprint is roughly the size of the largest type + an enum tag.
+using Value = std::variant<double, Matrix<double>>;
 
-struct FuncOpToken {
+struct Token {
     TokenType type;
-    size_t argc;
-
-    explicit FuncOpToken(const TokenType type) : type(type), argc(0) {
-        if (!operatorMap.contains(type)) throw std::invalid_argument("Invalid function token: " + std::to_string(type));
-    }
-
-    [[nodiscard]] std::string_view ToString() const {
-        return std::string_view(std::to_string(type));
-    }
-};
-
-struct NumberToken {
-    TokenType type = Number;
-    double data;
-    NumberToken(const auto& data)
-        : data(data)
-    {}
-
-    [[nodiscard]] std::string_view ToString() const {
-        return std::string_view(std::to_string(data));
-    }
-};
-
-struct MatrixToken {
-    TokenType type = MatrixT;
-    std::unique_ptr<Matrix<double>> data;
-
-    MatrixToken(std::unique_ptr<Matrix<double>> ptr)
-    : data(std::move(ptr)) {}
-
-    MatrixToken(const MatrixToken& other)
-        : type(other.type),
-          data(other.data ? std::make_unique<Matrix<double>>(*other.data) : nullptr)
-    {}
-
-    [[nodiscard]] std::string_view ToString() const {
-        std::stringstream ss;
-        ss << *data;
-        return ss.view();
-    }
-};
-
-struct RawMatrixToken {
-    TokenType type = RawMatrixT;
-    std::unique_ptr<Matrix<std::string_view>> rawData;
-    RawMatrixToken(std::unique_ptr<Matrix<std::string_view>> rawData)
-        : rawData(std::move(rawData))
-    {}
-
-    RawMatrixToken(const RawMatrixToken& other)
-        : type(other.type),
-          rawData(other.rawData ? std::make_unique<Matrix<std::string_view>>(*other.rawData) : nullptr)
-    {}
-
-    [[nodiscard]] std::string_view ToString() const {
-        std::stringstream ss;
-        ss << *rawData;
-        return ss.view();
-    }
-};
-
-struct VarToken {
-    TokenType type = Var;
-    std::string_view variable_name;
     Value data;
+    // ? can be even a vector in the future for multidimensional calculations
+    std::size_t argc = 0;
 
-    VarToken(const auto& variable_name, const auto& data_type, const auto& data)
-        : variable_name(variable_name), data(data)
-    {}
-
-    VarToken(const auto& variable_name) : variable_name(variable_name) {
-        data = 0.0;
-    }
-
-    VarToken(VarToken&& other) noexcept
-        : variable_name(other.variable_name), data(std::move(other.data))
-    {}
-
-    VarToken(const VarToken& other)
-        : type(other.type), variable_name(other.variable_name)
+    explicit Token(const TokenType type, Value data = {})
+        : type(type), data(std::move(data))
     {
-        std::visit([&]<typename T>(const T& val) {
-            if constexpr (std::is_same_v<T, double>) {
-                data = val;
-            } else if constexpr (std::is_same_v<T, std::unique_ptr<Matrix<double>>>) {
-                data = val ? std::make_unique<Matrix<double>>(*val) : nullptr;
-            }
-        }, other.data);
     }
 
-    VarToken& operator=(const VarToken& other) noexcept {
-        if (this == &other) return *this;
-        variable_name = other.variable_name;
-        std::visit([&]<typename T0>(T0&& val) {
-            using T = std::decay_t<T0>;
-            if constexpr (std::is_same_v<T, double>) {
-                data = val;
-            }
-            else if constexpr (std::is_same_v<T, std::unique_ptr<Matrix<double>>>)
-                data = std::make_unique<Matrix<double>>(val->GetData());
-        }, other.data);
-        return *this;
+    [[nodiscard]] bool IsOperator() const {
+        return type & (Add | Sub | Mul | Div | Pow | UnaryMinus | UnaryPlus | InvMul);
     }
 
-    [[nodiscard]] std::string_view ToString() const {
-        std::stringstream ss;
-        ss << variable_name << ": ";
-        std::visit([&]<typename T0>(T0&& val) {
-            if constexpr (std::is_same_v<T0, double>) {
-                ss << val;
-            } else if constexpr (std::is_same_v<T0, std::unique_ptr<Matrix<double>>>) {
-                ss << *val;
-            }
-        }, data);
-        return ss.view();
+    [[nodiscard]] bool IsFunction() const {
+        return type & (Sin | Cos | Tan | Cot | Sqrt | Min | Max | Log | Ln | LogBase | Abs);
+    }
+
+    [[nodiscard]] const OperatorInfo& GetOperatorInfo() const {
+        return operatorMap.at(type);
+    }
+
+    [[nodiscard]] std::string toString() const {
+        std::ostringstream os;
+        switch (type) {
+            case Add      :
+                os << "+";
+                break;
+            case Sub      :
+                os << "-";
+                break;
+            case Mul      :
+                os << "*";
+                break;
+            case Div      :
+                os << "/";
+                break;
+            case Pow      :
+                os << "^";
+                break;
+            case Min      :
+                os << "min";
+                break;
+            case Max      :
+                os << "max";
+                break;
+            case Sin      :
+                os << "sin";
+                break;
+            case Cos      :
+                os << "cos";
+                break;
+            case Tan      :
+                os << "tan";
+                break;
+            case Cot      :
+                os << "cot";
+                break;
+            case Sqrt     :
+                os << "sqrt";
+                break;
+            case InvMul:
+                os << "\\";
+                break;
+            case Number:
+            case MatrixT:
+                std::visit([&os](auto&& a) { os << std::setprecision(15) << a; }, data);
+                break;
+            case LeftParen :
+                os << "(";
+                break;
+            case RightParen:
+                os << ")";
+                break;
+            case Comma:
+                os << ",";
+                break;
+            case Mod:
+                os << "mod";
+                break;
+            case PI:
+                os << "π";
+                break;
+            case Fact:
+                os << "!";
+                break;
+            case Percent:
+                os << "%";
+                break;
+            case UnaryMinus:
+                os << "-";
+                break;
+            case UnaryPlus:
+                os << "+";
+                break;
+            case Log:
+                os << "log";
+                break;
+            case Ln:
+                os << "ln";
+                break;
+            case LogBase:
+                os << "logbase";
+                break;
+            case Abs:
+                os << "abs";
+                break;
+            case Euler:
+                os << "e";
+                break;
+            case Equality:
+            case Assignment:
+                os << "=";
+                break;
+            default: throw std::invalid_argument("Unknown operator");
+        }
+        return os.str();
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const Token& token) {
+        os << token.toString();
+        return os;
     }
 };
-
-using Token = std::variant<NumberToken, MatrixToken, RawMatrixToken, VarToken, FuncOpToken>;
-
-static bool IsOperator(const TokenType type) {
-    return type & (Add | Sub | Mul | Div | Pow | UnaryMinus | UnaryPlus | InvMul | Assignment);
-}
-
-static bool IsFunction(const TokenType type) {
-    return type & (Sin | Cos | Tan | Cot | Sqrt | Min | Max | Log | Ln | LogBase | Abs);
-}
-
-static const OperatorInfo& GetOperatorInfo(const TokenType type) {
-    return operatorMap.at(type);
-}

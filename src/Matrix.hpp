@@ -9,13 +9,12 @@
 #include <ostream>
 #include <stdexcept>
 #include <vector>
-#include <cstdint>
 
 using Func = std::function<double(double, double)>;
 
 template<typename T>
 class Matrix {
-    uint16_t M, N;
+    size_t M, N;
     std::vector<std::vector<T>> m_Data;
 
     template<typename RowType>
@@ -69,7 +68,7 @@ public:
     }
 
     explicit Matrix(const std::vector<std::vector<T>>& data)
-        : M(data.size()), N(data.begin()->size()), m_Data(data)
+        : M(data.size()), N(data.begin()->size()), m_Data(std::move(data))
     {}
 
     // Move ctor.
@@ -510,7 +509,7 @@ private:
 };
 
 template<typename T, typename A>
-Matrix<T> operator*(const A val, const Matrix<T>& m) {
+Matrix<T> operator*(A val, const Matrix<T>& m) {
     return m * val;
 }
 

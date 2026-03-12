@@ -11,7 +11,7 @@
 
 
 
-inline const std::unordered_map<std::string_view, TokenType> typeMapper = {
+inline static const std::unordered_map<std::string_view, TokenType> typeMapper = {
     {"+", Add},
     {"-", Sub},
     {"*", Mul},
@@ -37,18 +37,17 @@ inline const std::unordered_map<std::string_view, TokenType> typeMapper = {
 
 class Lexer {
 public:
-    static std::vector<Token> Tokenize(std::string_view,
-        std::unordered_map<std::string, Value>&);
+    static std::vector<Token> Tokenize(std::string_view);
 private:
     std::string_view input;
     std::size_t cursor;
 
     explicit Lexer(const std::string_view& input);
 
-    std::vector<Token> tokenizeCore(std::unordered_map<std::string, Value> &variables);
+    std::vector<Token> tokenizeCore();
     Token tokenizeNumber();
     Token tokenizeIdentifier();
-    Token tokenizeRawMatrix(std::unordered_map<std::string, Value>&);
+    Token tokenizeMatrix();
 };
 
 
