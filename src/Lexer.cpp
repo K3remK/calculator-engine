@@ -160,6 +160,6 @@ Token Lexer::tokenizeMatrix(std::unordered_map<std::string, Token>& variables) {
     if (input[cursor] != ']') throw std::invalid_argument("Unclosed matrix!");
     auto tokens = Tokenize(input.substr(start, cursor - start), variables);
     data[row].push_back(std::get<double>(Evaluator::Evaluate(Parser::ToPostfix(tokens), variables).data));
-    return Token(MatrixT, Matrix(data));
+    return Token(MatrixT, std::make_unique<Matrix<double>>(Matrix(data)));
 }
 

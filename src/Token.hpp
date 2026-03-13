@@ -93,7 +93,7 @@ inline static const std::unordered_map<TokenType, OperatorInfo> operatorMap = {
 
 // This variant can hold a double, an int, or a complex number.
 // The memory footprint is roughly the size of the largest type + an enum tag.
-using Value = std::variant<double, Matrix<double>>;
+using Value = std::variant<double, std::unique_ptr<Matrix<double>>>;
 
 struct Token {
     TokenType type;
@@ -118,7 +118,14 @@ struct Token {
     // Copy constructor for Token to handle deep copy
     Token(const Token& other) {
         type = other.type;
-        data = other.data;
+        std::visit([&]<typename T0>(T0&& a) {
+            using Type = std::decay_t<T0>;
+            if constexpr (std::is_same_v<Type, double>) {
+                data = a;
+            } else if constexpr (std::is_same_v<Type, std::unique_ptr<Matrix<double>>>) {
+                data = std::make_unique<Matrix<double>>(*a);
+            }
+        }, other.data);
         argc = other.argc;
         variable_name = other.variable_name ? std::make_unique<std::string>(*other.variable_name) : nullptr;
     }
@@ -127,7 +134,14 @@ struct Token {
     Token& operator=(const Token& other) {
         if (this == &other) return *this;
         type = other.type;
-        data = other.data;
+        std::visit([&]<typename T0>(T0&& a) {
+            using Type = std::decay_t<T0>;
+            if constexpr (std::is_same_v<Type, double>) {
+                data = a;
+            } else if constexpr (std::is_same_v<Type, std::unique_ptr<Matrix<double>>>) {
+                data = std::make_unique<Matrix<double>>(*a);
+            }
+        }, other.data);
         argc = other.argc;
         variable_name = other.variable_name ? std::make_unique<std::string>(*other.variable_name) : nullptr;
         return *this;

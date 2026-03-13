@@ -126,8 +126,16 @@ Token Evaluator::evalBinary(const TokenType op, const Token &left, const Token &
                 [](const double a, const double b) -> Token {
                     return Token(Number, a + b);
                 },
-                [](auto&& a, auto&& b) -> Token {
-                    return Token(MatrixT, a + b);
+                []<typename T0, typename T1>(T0&& a, T1&& b) -> Token {
+                    using T = std::decay_t<T0>;
+                    using U = std::decay_t<T1>;
+                    if constexpr (std::is_same_v<T, double>) {
+                        return Token(MatrixT, std::make_unique<Matrix<double>>(a + *b));
+                    } else if constexpr (std::is_same_v<U, double>) {
+                        return Token(MatrixT, std::make_unique<Matrix<double>>(*a + b));
+                    } else {
+                        return Token(MatrixT, std::make_unique<Matrix<double>>(*a + *b));
+                    }
                 }
             }, left.data, right.data);
         case Sub:
@@ -135,8 +143,16 @@ Token Evaluator::evalBinary(const TokenType op, const Token &left, const Token &
                 [](const double a, const double b) -> Token {
                     return Token(Number, a - b);
                 },
-                [](auto&& a, auto&& b) -> Token {
-                    return Token(MatrixT, a - b);
+                []<typename T0, typename T1>(T0&& a, T1&& b) -> Token {
+                    using T = std::decay_t<T0>;
+                    using U = std::decay_t<T1>;
+                    if constexpr (std::is_same_v<T, double>) {
+                        return Token(MatrixT, std::make_unique<Matrix<double>>(a - *b));
+                    } else if constexpr (std::is_same_v<U, double>) {
+                        return Token(MatrixT, std::make_unique<Matrix<double>>(*a - b));
+                    } else {
+                        return Token(MatrixT, std::make_unique<Matrix<double>>(*a - *b));
+                    }
                 }
             }, left.data, right.data);
         case Mul:
@@ -144,8 +160,16 @@ Token Evaluator::evalBinary(const TokenType op, const Token &left, const Token &
                 [](const double a, const double b) -> Token {
                     return Token(Number, a * b);
                 },
-                [](auto&& a, auto&& b) -> Token {
-                    return Token(MatrixT, a * b);
+                []<typename T0, typename T1>(T0&& a, T1&& b) -> Token {
+                    using T = std::decay_t<T0>;
+                    using U = std::decay_t<T1>;
+                    if constexpr (std::is_same_v<T, double>) {
+                        return Token(MatrixT, std::make_unique<Matrix<double>>(a * *b));
+                    } else if constexpr (std::is_same_v<U, double>) {
+                        return Token(MatrixT, std::make_unique<Matrix<double>>(*a * b));
+                    } else {
+                        return Token(MatrixT, std::make_unique<Matrix<double>>(*a * *b));
+                    }
                 }
             }, left.data, right.data);
         case Div:
@@ -153,13 +177,23 @@ Token Evaluator::evalBinary(const TokenType op, const Token &left, const Token &
                 [](const double a, const double b) -> Token {
                     return Token(Number, a / b);
                 },
-                [](auto&& a, auto&& b) -> Token {
-                    return Token(MatrixT, a / b);
+                []<typename T0, typename T1>(T0&& a, T1&& b) -> Token {
+                    using T = std::decay_t<T0>;
+                    using U = std::decay_t<T1>;
+                    if constexpr (std::is_same_v<U, double>) {
+                        return Token(MatrixT, std::make_unique<Matrix<double>>(*a / b));
+                    } else if constexpr (std::is_same_v<T, double>) {
+                        return Token(MatrixT, std::make_unique<Matrix<double>>(a / *b));
+                    } else {
+                        return Token(MatrixT, std::make_unique<Matrix<double>>(*a / *b));
+                    }
                 }
             }, left.data, right.data);
         case InvMul:
             return std::visit(overloaded{
-                [](const Matrix<double>& a, const Matrix<double>& b) -> Token { return Token(MatrixT, Matrix<double>::Solve(a, b)); },
+                [](const std::unique_ptr<Matrix<double>>& a, const std::unique_ptr<Matrix<double>>& b) -> Token {
+                    return Token(MatrixT, std::make_unique<Matrix<double>>(Matrix<double>::Solve(*a, *b)));
+                },
                 [](auto&&, auto&&) -> Token {
                     throw std::invalid_argument("InvMul not supported for this type");
                 }
@@ -172,7 +206,7 @@ Token Evaluator::evalBinary(const TokenType op, const Token &left, const Token &
                     Matrix<double> result = m.Identity();
                     for (int i = 0; i < a; i++)
                         result = result * m;
-                    return Token(MatrixT, result);
+                    return Token(MatrixT, std::make_unique<Matrix<double>>(result));
                 },
                 [](const double a, const double b) -> Token { return Token(Number, std::pow(a, b)); },
                 [](auto&&, auto&&) -> Token {
@@ -189,7 +223,14 @@ Token Evaluator::evalBinary(const TokenType op, const Token &left, const Token &
         case Assignment: {
             if (!(left.type & Variable)) throw std::invalid_argument("Invalid assignment: " + left.toString());
             if (!(right.type & Numbers)) throw std::invalid_argument("Invalid assignment: " + right.toString());
-            return Token(*left.variable_name, right.data);
+            std::visit([&]<typename T0>(T0&& a) {
+                using T = std::decay_t<T0>;
+                if constexpr (std::is_same_v<T, std::unique_ptr<Matrix<double>>>) {
+                    Token(*left.variable_name, std::make_unique<Matrix<double>>(*a));
+                } else {
+                    Token(*left.variable_name, a);
+                }
+            }, right.data);
         }
         default:
             throw std::invalid_argument("Invalid operator: " + std::to_string(op));
@@ -198,8 +239,8 @@ Token Evaluator::evalBinary(const TokenType op, const Token &left, const Token &
 
 
 Token Evaluator::evalUnary(const TokenType op, const Token &operand) {
-    return std::visit([&]<typename T0>(T0&& a) -> Token {
-        using T = std::decay_t<T0>;
+    return std::visit([&]<typename T1>(T1&& a) -> Token {
+        using T = std::decay_t<T1>;
         switch (op) {
         case Fact:
                 return factorial(operand);
@@ -208,9 +249,23 @@ Token Evaluator::evalUnary(const TokenType op, const Token &operand) {
                     return Token(Number, a * 0.01);
                 throw std::invalid_argument("Sin only supports double/int");
             case UnaryMinus:
-                return Token(operand.type, -a);
+                std::visit([&]<typename T3>(T3&& data) {
+                    using T2 = std::decay_t<T3>;
+                    if constexpr (std::is_same_v<T2, std::unique_ptr<Matrix<double>>>) {
+                        return Token(operand.type, std::make_unique<Matrix<double>>(-(*data)));
+                    } else {
+                        return Token(operand.type, -data);
+                    }
+                }, operand.data);
             case UnaryPlus:
-                return Token(operand.type, a);
+                std::visit([&]<typename T2>(T2&& data) {
+                    using T0 = std::decay_t<T2>;
+                    if constexpr (std::is_same_v<T0, std::unique_ptr<Matrix<double>>>) {
+                        return Token(operand.type, std::make_unique<Matrix<double>>(*data));
+                    } else {
+                        return Token(operand.type, data);
+                    }
+                }, operand.data);
             case Sin:
                 if constexpr (std::is_same_v<T, double>)
                     return Token(Number, std::sin(a * M_PI / 180));

@@ -10,7 +10,7 @@ void PrettyPrint::print(const std::vector<Token> &tokens) {
     size_t maxHeight = 1;
     for (auto& t : tokens) {
         if (t.type & MatrixT) {
-            maxHeight = std::max(maxHeight, std::get<Matrix<double>>(t.data).GetM());
+            maxHeight = std::max(maxHeight, std::get<std::unique_ptr<Matrix<double>>>(t.data)->GetM());
         }
     }
 
@@ -21,7 +21,7 @@ void PrettyPrint::print(const std::vector<Token> &tokens) {
 
     for (auto& t : tokens) {
         if (t.type & MatrixT) {
-            blocks.emplace_back(pp.matrixToBlock(std::get<Matrix<double>>(t.data)));
+            blocks.emplace_back(matrixToBlock(std::get<std::unique_ptr<Matrix<double>>>(t.data)));
         } else {
             blocks.emplace_back(pp.operatorToBlock(t.toString()));
         }
@@ -58,17 +58,17 @@ TextBlock PrettyPrint::operatorToBlock(const std::string& op) const {
     return block;
 }
 
-TextBlock PrettyPrint::matrixToBlock(const Matrix<double> &m) {
+TextBlock PrettyPrint::matrixToBlock(const std::unique_ptr<Matrix<double>> &m) {
     TextBlock block;
-    const auto& data = m.GetData();
+    const auto& data = m->GetData();
     if (data.empty()) return block;
 
-    // 1. Find the widest number for column alignment
+    // 1. Find the widest number for the column alignment
     int max_w = 0;
     for (auto& row : data) {
         for (const double v : row) {
             std::stringstream ss;
-            ss << v; // Using stringstream to avoid the "1.000000" overkill
+            ss << v; // Using string stream to avoid the "1.000000" overkill
             max_w = std::max(max_w, static_cast<int>(ss.str().length()));
         }
     }

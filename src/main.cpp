@@ -128,7 +128,7 @@ int main()
     t = m.Transpose();
     t = m.Identity();
 
-    const std::vector v = { Token(MatrixT, m), Token(Pow), Token(Number, 2.0)};
+    const std::vector v = { Token(MatrixT, std::make_unique<Matrix<double>>(m)), Token(Pow), Token(Number, 2.0)};
 
     Matrix<double> m4(1000, 1000, 1);
     Matrix<double> m5(1000, 1, 1);
@@ -182,6 +182,10 @@ int main()
     // Calculate duration
     std::chrono::duration<double> elapsed = end - start;
     std::cout << "Execution time: " << elapsed.count() << " seconds" << std::endl;
+
+
+    std::cout << sizeof(Token) << std::endl;
+    std::cout << sizeof(m4) << std::endl;
 
     std::string eq = "";
     std::vector<std::string> hist;
