@@ -9,13 +9,13 @@
 
 class Evaluator {
 public:
-    static Token Evaluate(const std::vector<Token>& postfixTokens, std::unordered_map<std::string_view, Token>& variables);
+    static Token Evaluate(const std::vector<Token>& postfixTokens, std::unordered_map<std::string, Token>& variables);
 private:
 
     template<class ... Ts> struct overloaded : Ts... { using Ts::operator()...; };
     template<class ... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
-    static void validate(const std::vector<Token>& token, const std::unordered_map<std::string_view, Token>& variables);
+    static void validate(const std::vector<Token>& token, const std::unordered_map<std::string, Token>& variables);
     static Token evalBinary(TokenType op, const Token& left, const Token& right);
     static Token evalUnary(TokenType op, const Token& operand);
     static Token evalVariadic(TokenType op, const std::vector<Token>& operands);

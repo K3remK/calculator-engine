@@ -12,7 +12,7 @@
 #include <type_traits>
 
 
-Token Evaluator::Evaluate(const std::vector<Token> &postfixTokens, std::unordered_map<std::string_view, Token> &variables) {
+Token Evaluator::Evaluate(const std::vector<Token> &postfixTokens, std::unordered_map<std::string, Token> &variables) {
     std::stack<Token> stack;
     validate(postfixTokens, variables);
 
@@ -48,12 +48,13 @@ Token Evaluator::Evaluate(const std::vector<Token> &postfixTokens, std::unordere
     auto result = std::move(stack.top());
     stack.pop();
 
-    if (result.type & Variable) variables.insert_or_assign(*result.variable_name, result);
+    if (result.type & Variable)
+        variables.insert_or_assign(*result.variable_name, result);
 
     return result;
 }
 
-void Evaluator::validate(const std::vector<Token> &postfixTokens, const std::unordered_map<std::string_view, Token> &variables) {
+void Evaluator::validate(const std::vector<Token> &postfixTokens, const std::unordered_map<std::string, Token> &variables) {
     const size_t size = postfixTokens.size();
     for (size_t index = 0; index < size; index++) {
         const auto& token = postfixTokens[index];

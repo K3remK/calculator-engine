@@ -40,9 +40,9 @@ enum TokenType : uint64_t {
     MatrixT             = 1ULL << 27,
     RawMatrixT          = 1ULL << 28,
     InvMul              = 1ULL << 29,
-    Equality            = 1ULL << 30,   // TODO
-    Assignment          = 1ULL << 31,   // TODO
-    Variable            = 1ULL << 32    // TODO
+    Equality            = 1ULL << 30,
+    Assignment          = 1ULL << 31,
+    Variable            = 1ULL << 32
 };
 
 // ! When you add a new function or operator !!!! Dont forget to update the IsOperator and IsFunction functions
@@ -62,6 +62,8 @@ struct OperatorInfo {
     bool isLeftAssociative;
     int expectedArgc;
 };
+
+// TODO: add lazy matrix evaluation to keep the logic seperated between Lexer -> Parser -> Evaluator
 
 inline static const std::unordered_map<TokenType, OperatorInfo> operatorMap = {
     {Add            ,           {0, true,  2}},

@@ -148,7 +148,7 @@ int main()
 
     std::cout << sizeof(std::unique_ptr<Matrix<double>>) << std::endl;
 
-    std::unordered_map<std::string_view, Token> variables;
+    std::unordered_map<std::string, Token> variables;
 
     int count = 1;
     for (const auto & i : infixEq) {

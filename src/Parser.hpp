@@ -9,8 +9,12 @@
 
 
 class Parser {
-    public:
-        static std::vector<Token> ToPostfix(std::vector<Token>& infixTokens);
+public:
+    static std::vector<Token> ToPostfix(std::vector<Token>& infixTokens);
+    static void Validate(const std::vector<Token>& infixTokens);
+private:
+    static void resolveUnaryOperators(std::vector<Token>& infixTokens);
+    static std::vector<Token> shuntingYard(const std::vector<Token>& infixTokens);
 };
 
 

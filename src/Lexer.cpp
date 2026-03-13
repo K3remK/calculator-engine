@@ -10,7 +10,7 @@
 #include "Parser.hpp"
 
 
-std::vector<Token> Lexer::Tokenize(const std::string_view input_, std::unordered_map<std::string_view, Token>& variables) {
+std::vector<Token> Lexer::Tokenize(const std::string_view input_, std::unordered_map<std::string, Token>& variables) {
     Lexer lexer(input_);
     return lexer.tokenizeCore(variables);
 }
@@ -20,7 +20,7 @@ Lexer::Lexer(const std::string_view& input)
 {
 }
 
-std::vector<Token> Lexer::tokenizeCore(std::unordered_map<std::string_view, Token> &variables) {
+std::vector<Token> Lexer::tokenizeCore(std::unordered_map<std::string, Token> &variables) {
     std::vector<Token> tokens;
 
     while (cursor < input.length()) {
@@ -123,7 +123,7 @@ Token Lexer::tokenizeIdentifier() {
     }
 }
 
-Token Lexer::tokenizeMatrix(std::unordered_map<std::string_view, Token>& variables) {
+Token Lexer::tokenizeMatrix(std::unordered_map<std::string, Token>& variables) {
     auto data = std::vector<std::vector<double>>(1);
     if (input[cursor] == ']') throw std::invalid_argument("Empty matrix!");
     size_t row = 0;
