@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.14.0)
 project(calculator-engine VERSION 0.1.0 LANGUAGES C CXX)
 
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_EXTENSIONS OFF) # For portable, standard-compliant code
+
 add_executable(calculator-engine
         src/main.cpp
         src/Lexer.cpp

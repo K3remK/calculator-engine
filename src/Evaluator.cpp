@@ -14,13 +14,11 @@
 
 Token Evaluator::Evaluate(const std::vector<Token> &postfixTokens, std::unordered_map<std::string_view, Token> &variables) {
     std::stack<Token> stack;
-
-    //TODO: ADD A MORE GENERAL VALIDATION CHECK
+    validate(postfixTokens, variables);
 
     for (const auto& token : postfixTokens) {
-        validate(token);
         if (token.type & Numbers)
-            if (token.type & Variable && variables.find(*token.variable_name) != variables.end())
+            if (token.type & Variable && variables.contains(*token.variable_name))
                 stack.push(variables.at(*token.variable_name));
             else
                 stack.push(token);
@@ -55,16 +53,25 @@ Token Evaluator::Evaluate(const std::vector<Token> &postfixTokens, std::unordere
     return result;
 }
 
-void Evaluator::validate(const Token &token) {
-    if (token.type & MathFunctions) {  //* one of the math functions but not unary minus
-        //* if the current token is a function and doesn't have any argument -> throw an error
-        if (token.argc == 0)
-            throw std::runtime_error("Invalid usage of function: " + token.toString());
-        //* if the current function is a unary func and have more than 1 argument -> throw error
-        if (token.type & UnaryFunctions && token.argc > 1)
-            throw std::runtime_error("Wrong argument count for unary func: " + token.toString() + ", argc: " + std::to_string(token.argc));
-        if (token.type & (LogBase) && token.argc != 2)
-            throw std::runtime_error("Wrong argument count for binary func: " + token.toString() + ", argc: " + std::to_string(token.argc));
+void Evaluator::validate(const std::vector<Token> &postfixTokens, const std::unordered_map<std::string_view, Token> &variables) {
+    const size_t size = postfixTokens.size();
+    for (size_t index = 0; index < size; index++) {
+        const auto& token = postfixTokens[index];
+        if (token.type & MathFunctions) {  //* one of the math functions but not unary minus
+            //* if the current token is a function and doesn't have any argument -> throw an error
+            if (token.argc == 0)
+                throw std::runtime_error("Invalid usage of function: " + token.toString());
+            //* if the current function is a unary func and have more than 1 argument -> throw error
+            if (token.type & UnaryFunctions && token.argc > 1)
+                throw std::runtime_error("Wrong argument count for unary func: " + token.toString() + ", argc: " + std::to_string(token.argc));
+            if (token.type & (LogBase) && token.argc != 2)
+                throw std::runtime_error("Wrong argument count for binary func: " + token.toString() + ", argc: " + std::to_string(token.argc));
+        }
+        else if (token.type & Variable) {
+            if ((index == 0 && postfixTokens[size - 1].type & Assignment) || variables.contains(*token.variable_name))
+                continue;
+            throw std::runtime_error("Unknown variable: " + *token.variable_name);
+        }
     }
 }
 
@@ -76,8 +83,8 @@ Token Evaluator::minVariadic(const std::vector<Token> &operands) {
     bool initialized = false;
 
     for (const Token& v : operands) {
-        double x = std::visit([](auto&& a) -> double {
-            using T = std::decay_t<decltype(a)>;
+        double x = std::visit([]<typename T0>(T0&& a) -> double {
+            using T = std::decay_t<T0>;
             if constexpr (std::is_same_v<T, double>) return a;
             else throw std::invalid_argument("min() supports only int/double arguments");
         }, v.data);
@@ -97,8 +104,8 @@ Token Evaluator::maxVariadic(const std::vector<Token> &operands) {
     bool initialized = false;
 
     for (const Token& v : operands) {
-        double x = std::visit([](auto&& a) -> double {
-            using T = std::decay_t<decltype(a)>;
+        double x = std::visit([]<typename T0>(T0&& a) -> double {
+            using T = std::decay_t<T0>;
             if constexpr (std::is_same_v<T, int>) return static_cast<double>(a);
             else if constexpr (std::is_same_v<T, double>) return a;
             else throw std::invalid_argument("max() supports only int/double arguments");
@@ -190,8 +197,8 @@ Token Evaluator::evalBinary(const TokenType op, const Token &left, const Token &
 
 
 Token Evaluator::evalUnary(const TokenType op, const Token &operand) {
-    return std::visit([&](auto&& a) -> Token {
-        using T = std::decay_t<decltype(a)>;
+    return std::visit([&]<typename T0>(T0&& a) -> Token {
+        using T = std::decay_t<T0>;
         switch (op) {
         case Fact:
                 return factorial(operand);
