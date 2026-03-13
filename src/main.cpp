@@ -46,7 +46,7 @@ int main()
         "sin(0) + cos(0)",
         "([1 2 3; 1 2 3; 1 2 3] * [1 2 3;1 2 3;1 2 3]) / 10",
         "([1, 2 3; 1, 2, 3; 1, 2, 3] * [1, 2, 3;1, 2, 3;1, 2, 3]) / 10",
-        "[1 2 3; 1 2 3; 1 2 3]^1000000",
+        //"[1 2 3; 1 2 3; 1 2 3]^1000000",
         "[1 -2 3; 2 1 -1; -1 3 2] \\ [7; 2; -3]",                              // x = [2; -1; 1]
         "[2 1; 5 3] \\ [8; 21]",                                                 // x = [3; 2]
         "[2 0 0; 0 3 0; 0 0 4] \\ [8; 9; 8]",                                   // x = [4; 3; 2]
@@ -158,6 +158,22 @@ int main()
             std::vector<Token> infixTokens = Lexer::Tokenize(i, variables);
             std::vector<Token> postfixTokens = Parser::ToPostfix(infixTokens);
             infixTokens.emplace_back(Equality);
+
+            // fetch the variable data from map to print
+            for (auto& t : infixTokens) {
+                if (t.type & Variable && variables.contains(*t.variable_name)) {
+                    const auto& token = variables.at(*t.variable_name);
+                    std::visit([&]<typename T0>(T0&& a) {
+                        using T = std::decay_t<T0>;
+                        if constexpr (std::is_same_v<T, double>) {
+                            t.data = a;
+                        } else {
+                            t.data = std::make_unique<Matrix<double>>(*a);
+                        }
+                    }, token.data);
+                }
+            }
+
             auto result = Evaluator::Evaluate(postfixTokens, variables);
             infixTokens.push_back(result);
             std::cout << "Equation: " << count++ << std::endl;

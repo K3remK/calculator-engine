@@ -260,7 +260,17 @@ struct Token {
                 os << "=";
                 break;
             case Variable:
-                os << *variable_name;
+                os << *variable_name << "(";
+                std::visit([&os](auto&& a) {
+                    using T = std::decay_t<decltype(a)>;
+                    if constexpr (std::is_same_v<T, double>) {
+                        os << std::setprecision(10) << a;
+                    } else if constexpr (std::is_same_v<T, std::unique_ptr<Matrix<double>>>) {
+                        if (a) os << *a;
+                        else os << "<null-matrix>";
+                    }
+                }, data);
+                os << ")";
                 break;
             default: throw std::invalid_argument("Unknown operator");
         }
