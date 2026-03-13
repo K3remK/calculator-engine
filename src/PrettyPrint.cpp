@@ -12,6 +12,62 @@ std::string PrettyPrint::formatDouble(double value) {
     return os.str();
 }
 
+void PrettyPrint::print(const Token& token) {
+    if (token.type & Variable) {
+        printVariable(token);
+        return;
+    }
+
+    std::visit([](auto&& a) {
+        using T = std::decay_t<decltype(a)>;
+        if constexpr (std::is_same_v<T, double>) {
+            printDouble(a);
+        } else if constexpr (std::is_same_v<T, std::unique_ptr<Matrix<double>>>) {
+            printMatrix(a);
+        }
+    }, token.data);
+}
+
+void PrettyPrint::printVariable(const Token& token) {
+    const std::string& name = *token.variable_name;
+
+    std::visit([&name](auto&& a) {
+        using T = std::decay_t<decltype(a)>;
+        if constexpr (std::is_same_v<T, double>) {
+            std::cout << name << " = " << formatDouble(a) << "\n";
+        } else if constexpr (std::is_same_v<T, std::unique_ptr<Matrix<double>>>) {
+            // Build blocks: "name" " = " matrix
+            std::vector<TextBlock> blocks;
+
+            size_t maxHeight = 1;
+            if (a) maxHeight = std::max(maxHeight, a->GetM());
+
+            PrettyPrint pp;
+            pp.height = maxHeight;
+
+            blocks.emplace_back(pp.operatorToBlock(name));
+            blocks.emplace_back(pp.operatorToBlock("="));
+            blocks.emplace_back(matrixToBlock(a));
+
+            printEquation(blocks);
+        }
+    }, token.data);
+}
+
+void PrettyPrint::printDouble(double value) {
+    std::cout << formatDouble(value) << "\n";
+}
+
+void PrettyPrint::printMatrix(const std::unique_ptr<Matrix<double>>& matrix) {
+    if (!matrix) {
+        std::cout << "[ null ]\n";
+        return;
+    }
+    std::vector<TextBlock> blocks;
+    blocks.emplace_back(matrixToBlock(matrix));
+    printEquation(blocks);
+}
+
 void PrettyPrint::print(const std::vector<Token> &tokens) {
     bool hasMatrix = false;
     size_t maxHeight = 1;

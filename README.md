@@ -106,7 +106,7 @@ Renders expression results with vertically-centered alignment. Matrices are disp
 ```
 ┌──────────────────────────────────────────────────────┐
 │                     main.cpp                         │
-│            (demo driver with sample expressions)     │
+│               (Interactive REPL & driver)            │
 └───────────┬──────────────────────────────────────────┘
             │
    ┌────────▼────────┐
@@ -150,72 +150,97 @@ cmake --build build
 ./build/calculator-engine
 ```
 
+### 🖥️ Interactive REPL
+
+> [!NOTE]
+> **This is the primary interactive way to use the engine!** Running the executable drops you into a built-in, interactive Read-Eval-Print Loop (REPL).
+
+This custom terminal environment features:
+
+- **Inline Editing**: Move the cursor with the `Left` and `Right` arrow keys to insert or delete characters anywhere in the expression.
+- **Command History**: Press the `Up` and `Down` arrow keys to navigate and evaluate previously entered expressions.
+- **Session State**: Variables declared during a session persist across multiple evaluations.
+- **Exit Commands**: Type `quit` or `exit` to cleanly close the session.
+
 ### Example Output
 
 Scalar expressions:
 
 ```
-2 + 3 * 4       = 14
-sqrt(3^2 + 4^2) = 5
-cos(-pi)        = -1
--3 + 1          = -2
-(80*20%)!       = 20922789888000
-100 mod 13      = 9
-log(100)        = 2
-logbase(8, 2)   = 3
-abs(-5)         = 5
+>2 + 3 * 4
+14
+>sqrt(3^2 + 4^2)
+5
+>cos(-pi)
+0.9984971499
+> -3 + 1
+-2
+>(80*20%)!
+2.092278989e+13
+>100 mod 13
+9
+>log(100)
+2
+>logbase(8, 2)
+3
+>abs(-5)
+5
 ```
 
 Variables:
 
 ```
-x = 5           = 5
-y = x + 3       = 8
-sin(x) * y      = 0.697245...
-my_matrix = [1 2; 3 4]
-my_matrix * 2   = [ 2 4 ]
-                  [ 6 8 ]
+>x = 5
+x = 5
+>y = x + 3
+y = 8
+>sin(x) * y
+0.697245942
+>my_matrix = [1 2; 3 4]
+              [ 1  2 ]
+ my_matrix  = [ 3  4 ]
+>my_matrix * 2
+[ 2  4 ]
+[ 6  8 ]
 ```
 
 Matrix expressions:
 
 ```
-                 [ 1 ]
-[ 1  2  3  4 ]   [ 2 ]   [ 30 ]
-[ 1  2  3  4 ] * [ 3 ] = [ 30 ]
-                 [ 4 ]
+>[1 2 3 4] * [1; 2; 3; 4]
+[ 30 ]
 
-   [ 1  2  3 ]   [ 1  2  3 ]             [ 0.6  1.2  1.8 ]
- ( [ 1  2  3 ] * [ 1  2  3 ] )  /  10  = [ 0.6  1.2  1.8 ]
-   [ 1  2  3 ]   [ 1  2  3 ]             [ 0.6  1.2  1.8 ]
+>([1 2 3; 1 2 3; 1 2 3] * [1 2 3; 1 2 3; 1 2 3]) / 10
+[ 0.6  1.2  1.8 ]
+[ 0.6  1.2  1.8 ]
+[ 0.6  1.2  1.8 ]
 
-[ 1  2  3 ]               [ inf  inf  inf ]
-[ 1  2  3 ] ^  1000000  = [ inf  inf  inf ]
-[ 1  2  3 ]               [ inf  inf  inf ]
+>[1 2 3; 1 2 3; 1 2 3] ^ 1000000
+[ inf  inf  inf ]
+[ inf  inf  inf ]
+[ inf  inf  inf ]
 ```
 
 Matrix entries as expressions — each cell is evaluated independently:
 
 ```
-[2^2  cos(0)  sin(0); cos(0)  2^2  cos(0); sin(0)  cos(0)  2^2] \ [6; 12; 14]
+>[2^2 cos(0) sin(0); cos(0) 2^2 cos(0); sin(0) cos(0) 2^2] \ [6; 12; 14]
+[ 1 ]
+[ 2 ]
+[ 3 ]
 
-→  [ 4  1  0 ]       [ 6  ]   [ 1 ]
-   [ 1  4  1 ]  \  [ 12 ] = [ 2 ]
-   [ 0  1  4 ]       [ 14 ]   [ 3 ]
-
-[sqrt(16)/5*5  cos(0)  sin(0); cos(0)  sqrt(16)/5*5  cos(0); sin(0)  cos(0)  sqrt(16)/5*5] \\ [sqrt(16)/5*5+cos(0)*2+sin(0); cos(0)+sqrt(16)/5*5*2+cos(0); sin(0)+cos(0)*2+sqrt(16)/5*5]
-
-→  [ 4  1  0 ]   [  6 ]   [ 1 ]
-   [ 1  4  1 ] \ [ 10 ] = [ 2 ]
-   [ 0  1  4 ]   [  6 ]   [ 1 ]
-
+>[sqrt(16)/5*5 cos(0) sin(0); cos(0) sqrt(16)/5*5 cos(0); sin(0) cos(0) sqrt(16)/5*5] \ [sqrt(16)/5*5+cos(0)*2+sin(0); cos(0)+sqrt(16)/5*5*2+cos(0); sin(0)+cos(0)*2+sqrt(16)/5*5]
+[ 1 ]
+[ 2 ]
+[ 1 ]
 ```
 
 Linear system solving (`A \ b`):
 
 ```
-[ 2  1 ]        [ 8  ]   [ 3 ]
-[ 5  3 ]  \  [  21 ] = [ 2 ]
+>[2 1; 5 3] \ [8; 21]
+[ 3 ]
+[ 2 ]
 ```
 
 ---
@@ -264,7 +289,7 @@ calculator-engine/
 ├── CMakeLists.txt           # Build config (includes GoogleTest via FetchContent)
 ├── README.md                # This file
 ├── src/
-│   ├── main.cpp             # Demo driver with sample expressions
+│   ├── main.cpp             # Interactive REPL and application entry point
 │   ├── Token.hpp            # Token types, operator info & function dispatch
 │   ├── Matrix.hpp           # Matrix<T> template class (arithmetic, transpose, determinant, inverse, solve)
 │   ├── Matrix.cpp           # Matrix implementation helpers
@@ -463,7 +488,7 @@ Result: 5
 - [x] Matrix determinant and inverse (Gauss-Jordan elimination)
 - [x] Linear system solver (`A \ b`) via LU decomposition with partial pivoting
 - [x] Variable support (`x = 5; 2*x + 3`)
-- [ ] Interactive REPL mode
+- [x] Interactive REPL mode
 - [ ] System of equations shorthand solver (e.g., `solve(x+y=2, x-y=0)`)
 
 ---

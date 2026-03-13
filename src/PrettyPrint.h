@@ -22,7 +22,11 @@ class PrettyPrint {
     size_t height = 1;
 public:
     static void print(const std::vector<Token>& tokens);
+    static void print(const Token& tokens);
 private:
+    static void printDouble(double value);
+    static void printVariable(const Token& token);
+    static void printMatrix(const std::unique_ptr<Matrix<double>>& matrix);
     static void printEquation(const std::vector<TextBlock>& blocks);
     [[nodiscard]] TextBlock operatorToBlock(const std::string& op) const;
     static TextBlock matrixToBlock(const std::unique_ptr<Matrix<double>>& m);
