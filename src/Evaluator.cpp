@@ -5,42 +5,54 @@
 #include "Evaluator.hpp"
 
 #include <complex>
+#include <map>
 
 #include "Matrix.hpp"
 #include <stack>
 #include <type_traits>
 
 
-Value Evaluator::Evaluate(const std::vector<Token> &postfixTokens) {
+Token Evaluator::Evaluate(const std::vector<Token> &postfixTokens, std::unordered_map<std::string_view, Token> &variables) {
     std::stack<Token> stack;
 
+    //TODO: ADD A MORE GENERAL VALIDATION CHECK
+
     for (const auto& token : postfixTokens) {
+        validate(token);
         if (token.type & Numbers)
-            stack.push(token);
+            if (token.type & Variable && variables.find(*token.variable_name) != variables.end())
+                stack.push(variables.at(*token.variable_name));
+            else
+                stack.push(token);
         else {
-            validate(token);
             if (token.type & VariadicFunctions) {
-                std::vector<Value> operands;
+                std::vector<Token> operands;
+                operands.reserve(token.argc);
+                //! ORDER OF PARAMETERS REVERSED HERE CURRENTLY DOES NOT MATTER FOR MIN AND MAX FUNCTIONS
                 for (size_t i = 0; i < token.argc; i++) {
-                    operands.push_back(stack.top().data);
+                    operands.push_back(std::move(stack.top()));
                     stack.pop();
                 }
-                auto result = evalVariadic(token.type, operands);
-                stack.emplace(Number, result);
+                stack.push(evalVariadic(token.type, operands));
             } else if (token.type & UnaryFunctions) {
-                auto right = stack.top().data;
+                auto right = std::move(stack.top());
                 stack.pop();
-                stack.emplace(Number, evalUnary(token.type, right));
+                stack.push(evalUnary(token.type, right));
             } else {
-                auto right = stack.top().data;
+                auto right = std::move(stack.top());
                 stack.pop();
-                auto left = stack.top().data;
+                auto left = std::move(stack.top());
                 stack.pop();
-                stack.emplace(Number, evalBinary(token.type, left, right));
+                stack.push(evalBinary(token.type, left, right));
             }
         }
     }
-    return stack.top().data;
+    auto result = std::move(stack.top());
+    stack.pop();
+
+    if (result.type & Variable) variables.insert_or_assign(*result.variable_name, result);
+
+    return result;
 }
 
 void Evaluator::validate(const Token &token) {
@@ -56,146 +68,179 @@ void Evaluator::validate(const Token &token) {
     }
 }
 
-Value Evaluator::minVariadic(const std::vector<Value> &operands) {
+Token Evaluator::minVariadic(const std::vector<Token> &operands) {
     if (operands.empty())
         throw std::invalid_argument("min() requires at least one argument");
 
     auto currentMin = std::numeric_limits<double>::max();
     bool initialized = false;
 
-    for (const Value& v : operands) {
+    for (const Token& v : operands) {
         double x = std::visit([](auto&& a) -> double {
             using T = std::decay_t<decltype(a)>;
-            if constexpr (std::is_same_v<T, int>) return static_cast<double>(a);
-            else if constexpr (std::is_same_v<T, double>) return a;
+            if constexpr (std::is_same_v<T, double>) return a;
             else throw std::invalid_argument("min() supports only int/double arguments");
-        }, v);
+        }, v.data);
 
         if (!initialized) { currentMin = x; initialized = true; }
         else currentMin = std::min(currentMin, x);
     }
 
-    return currentMin;
+    return Token(Number, currentMin);
 }
 
-Value Evaluator::maxVariadic(const std::vector<Value> &operands) {
+Token Evaluator::maxVariadic(const std::vector<Token> &operands) {
     if (operands.empty())
         throw std::invalid_argument("max() requires at least one argument");
 
     auto currentMax = std::numeric_limits<double>::lowest();
     bool initialized = false;
 
-    for (const Value& v : operands) {
+    for (const Token& v : operands) {
         double x = std::visit([](auto&& a) -> double {
             using T = std::decay_t<decltype(a)>;
             if constexpr (std::is_same_v<T, int>) return static_cast<double>(a);
             else if constexpr (std::is_same_v<T, double>) return a;
             else throw std::invalid_argument("max() supports only int/double arguments");
-        }, v);
+        }, v.data);
 
         if (!initialized) { currentMax = x; initialized = true; }
         else currentMax = std::max(currentMax, x);
     }
 
-    return currentMax;
+    return Token(Number, currentMax);
 }
 
-Value Evaluator::evalBinary(const TokenType op, const Value &left, const Value &right) {
+Token Evaluator::evalBinary(const TokenType op, const Token &left, const Token &right) {
     switch (op) {
         case Add:
-            return std::visit([](auto&& a, auto&& b) -> Value { return a + b; }, left, right);
+            return std::visit(overloaded{
+                [](const double a, const double b) -> Token {
+                    return Token(Number, a + b);
+                },
+                [](auto&& a, auto&& b) -> Token {
+                    return Token(MatrixT, a + b);
+                }
+            }, left.data, right.data);
         case Sub:
-            return std::visit([](auto&& a, auto&& b) -> Value { return a - b; }, left, right);
+            return std::visit(overloaded{
+                [](const double a, const double b) -> Token {
+                    return Token(Number, a - b);
+                },
+                [](auto&& a, auto&& b) -> Token {
+                    return Token(MatrixT, a - b);
+                }
+            }, left.data, right.data);
         case Mul:
-            return std::visit([](auto&& a, auto&& b) -> Value { return a * b; }, left, right);
+            return std::visit(overloaded{
+                [](const double a, const double b) -> Token {
+                    return Token(Number, a * b);
+                },
+                [](auto&& a, auto&& b) -> Token {
+                    return Token(MatrixT, a * b);
+                }
+            }, left.data, right.data);
         case Div:
-            return std::visit([](auto&& a, auto&& b) -> Value { return a / b; }, left, right);
+            return std::visit(overloaded{
+                [](const double a, const double b) -> Token {
+                    return Token(Number, a / b);
+                },
+                [](auto&& a, auto&& b) -> Token {
+                    return Token(MatrixT, a / b);
+                }
+            }, left.data, right.data);
         case InvMul:
             return std::visit(overloaded{
-                [](const Matrix<double>& a, const Matrix<double>& b) -> Value { return Matrix<double>::Solve(a, b); },
-                [](auto&&, auto&&) -> Value {
+                [](const Matrix<double>& a, const Matrix<double>& b) -> Token { return Token(MatrixT, Matrix<double>::Solve(a, b)); },
+                [](auto&&, auto&&) -> Token {
                     throw std::invalid_argument("InvMul not supported for this type");
                 }
-            }, left, right);
+            }, left.data, right.data);
         case Mod:
             return evaluateMod(left, right);
         case Pow:
             return std::visit(overloaded{
-                [](const Matrix<double>& m, const double a) -> Value {
+                [](const Matrix<double>& m, const double a) -> Token {
                     Matrix<double> result = m.Identity();
                     for (int i = 0; i < a; i++)
                         result = result * m;
-                    return result;
+                    return Token(MatrixT, result);
                 },
-                [](const double a, const double b) -> Value { return std::pow(a, b); },
-                [](auto&&, auto&&) -> Value {
+                [](const double a, const double b) -> Token { return Token(Number, std::pow(a, b)); },
+                [](auto&&, auto&&) -> Token {
                     throw std::invalid_argument("Pow not supported for this type");
                 }
-            }, left, right);
+            }, left.data, right.data);
         case LogBase:
             return std::visit(overloaded{
-                [](const double a, const double b) -> Value { return std::log(a) / std::log(b); },
-                [](auto&&, auto&&) -> Value {
+                [](const double a, const double b) -> Token { return Token(Number, std::log(a) / std::log(b)); },
+                [](auto&&, auto&&) -> Token {
                     throw std::invalid_argument("LogBase not supported for this type");
                 }
-            }, left, right);
+            }, left.data, right.data);
+        case Assignment: {
+            if (!(left.type & Variable)) throw std::invalid_argument("Invalid assignment: " + left.toString());
+            if (!(right.type & Numbers)) throw std::invalid_argument("Invalid assignment: " + right.toString());
+            return Token(*left.variable_name, right.data);
+        }
         default:
             throw std::invalid_argument("Invalid operator: " + std::to_string(op));
     }
 }
 
 
-Value Evaluator::evalUnary(TokenType op, const Value &operand) {
-    return std::visit([op](auto&& a) -> Value {
+Token Evaluator::evalUnary(const TokenType op, const Token &operand) {
+    return std::visit([&](auto&& a) -> Token {
         using T = std::decay_t<decltype(a)>;
         switch (op) {
         case Fact:
-                return factorial(a);
+                return factorial(operand);
             case Percent:
-                // ! Maybe throw an error if it is a matrix
-                return a * 0.01;
+                if constexpr (std::is_same_v<T, double>)
+                    return Token(Number, a * 0.01);
+                throw std::invalid_argument("Sin only supports double/int");
             case UnaryMinus:
-                return -a;
+                return Token(operand.type, -a);
             case UnaryPlus:
-                return a;
+                return Token(operand.type, a);
             case Sin:
                 if constexpr (std::is_same_v<T, double>)
-                    return std::sin(a * M_PI / 180);
+                    return Token(Number, std::sin(a * M_PI / 180));
                 throw std::invalid_argument("Sin only supports double/int");
             case Cos:
                 if constexpr (std::is_same_v<T, double>)
-                    return std::cos(a * M_PI / 180);
+                    return Token(Number, std::cos(a * M_PI / 180));
                 throw std::invalid_argument("Cos only supports double/int");
             case Tan:
                 if constexpr (std::is_same_v<T, double>)
-                    return std::tan(a * M_PI / 180);
+                    return Token(Number, std::tan(a * M_PI / 180));
                 throw std::invalid_argument("Tan only supports double/int");
             case Cot:
                 if constexpr (std::is_same_v<T, double>)
-                    return 1.0 / std::tan(a * M_PI / 180);
+                    return Token(Number, 1.0 / std::tan(a * M_PI / 180));
                 throw std::invalid_argument("Cot only supports double/int");
             case Sqrt:
                 if constexpr (std::is_same_v<T, double>)
-                    return std::sqrt(a);
+                    return Token(Number, std::sqrt(a));
                 throw std::invalid_argument("Sqrt only supports double/int");
             case Log:
                 if constexpr (std::is_same_v<T, double>)
-                    return std::log10(a);
+                    return Token(Number, std::log10(a));
                 throw std::invalid_argument("Log only supports double/int");
             case Abs:
                 if constexpr (std::is_same_v<T, double>)
-                    return std::abs(a);
+                    return Token(Number, std::abs(a));
                 throw std::invalid_argument("abs only supports double/int");
             case Ln:
                 if constexpr (std::is_same_v<T, double>)
-                    return std::log(a);
+                    return Token(Number, std::log(a));
                 throw std::invalid_argument("Ln only supports double/int");
             default: throw std::invalid_argument("Invalid operator: " + std::to_string(op));
         }
-    }, operand);
+    }, operand.data);
 }
 
-Value Evaluator::evalVariadic(TokenType op, const std::vector<Value> &operands) {
+Token Evaluator::evalVariadic(TokenType op, const std::vector<Token> &operands) {
     switch (op) {
         case Min:
             return minVariadic(operands);
@@ -206,26 +251,26 @@ Value Evaluator::evalVariadic(TokenType op, const std::vector<Value> &operands) 
     }
 }
 
-Value Evaluator::evaluateMod(const Value &left, const Value &right) {
+Token Evaluator::evaluateMod(const Token &left, const Token &right) {
     return std::visit(overloaded{
-        [](const double a, const double b) -> Value { return fmod(a, b); },
-        [](auto&&, auto&&) -> Value {
+        [](const double a, const double b) -> Token { return Token(Number, fmod(a, b)); },
+        [](auto&&, auto&&) -> Token {
                     throw std::invalid_argument("Modulus not supported for this type");
         }
-    }, left, right);
+    }, left.data, right.data);
 }
 
-Value Evaluator::factorial(const Value &operand) {
+Token Evaluator::factorial(const Token &operand) {
     return std::visit(overloaded{
-            [](double a) -> Value {
-                if (a == 0) return 1.0;
+            [](double a) -> Token {
+                if (a == 0) return Token(Number, 1.0);
                 if (static_cast<int>(a) != a) throw std::invalid_argument("Factorial supports only integers");
                 double x = 1.0;
                 while (a > 1.0) { x *= a; a -= 1.0; }
-                return x;
+                return Token(Number, x);
             },
-            [](auto&&) -> Value {
+            [](auto&&) -> Token {
                 throw std::invalid_argument("Factorial not supported for this type");
             }
-        }, operand);
+        }, operand.data);
 }

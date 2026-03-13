@@ -68,43 +68,37 @@ public:
     }
 
     explicit Matrix(const std::vector<std::vector<T>>& data)
-        : M(data.size()), N(data.begin()->size()), m_Data(std::move(data))
+    : M(data.size()), N(data.begin()->size()), m_Data(data)
     {}
+
+    Matrix& operator=(Matrix&& other) noexcept {
+        if (*this == other) return *this;
+        M = other.M;
+        N = other.N;
+        m_Data = std::move(other.m_Data);
+
+        other.M = 0;
+        other.N = 0;
+
+        return *this;
+    };
 
     // Move ctor.
     Matrix(Matrix &&other) noexcept
         : M(other.M), N(other.N), m_Data(std::move(other.m_Data))
     {
+        other.M = 0;
+        other.N = 0;
+        other.m_Data.clear();
     }
 
-    // Copy ctor.
-    Matrix(const Matrix &other)
-        : M(other.M), N(other.N), m_Data(other.m_Data)
-    {
-    }
+    Matrix(const Matrix&) = default;
+    Matrix& operator=(const Matrix&) = default;
 
     Matrix(std::initializer_list<std::initializer_list<T>> list) {
         M = list.size();
         N = list.begin()->size();
         m_Data.assign(list.begin(), list.end());
-    }
-
-    // Assignment
-    Matrix& operator=(const Matrix &other) {
-        if (this == &other) return *this;
-        M = other.M;
-        N = other.N;
-        m_Data = other.m_Data;
-        return *this;
-    }
-
-    // Move assignment
-    Matrix& operator=(Matrix &&other) noexcept {
-        if (this == &other) return *this;
-        M = other.M;
-        N = other.N;
-        m_Data = std::move(other.m_Data);
-        return *this;
     }
 
     ~Matrix() = default;

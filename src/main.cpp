@@ -9,6 +9,7 @@
 #include "Matrix.hpp"
 #include "PrettyPrint.h"
 #include <variant>
+#include <chrono>
 
 int main()
 {
@@ -73,7 +74,17 @@ int main()
         // x = [2; 2; 2; 2]
         "[2^2  cos(0)  sin(0)  cos(0); cos(0)  2^2  cos(0)  sin(0); sin(0)  cos(0)  2^2  cos(0); cos(0)  sin(0)  cos(0)  2^2] \\ [2^2*2+cos(0)*2+sin(0)*2+cos(0)*2; cos(0)*2+2^2*2+cos(0)*2+sin(0)*2; sin(0)*2+cos(0)*2+2^2*2+cos(0)*2; cos(0)*2+sin(0)*2+cos(0)*2+2^2*2]",
         "1 \\ 10",
+        "x = 10",
+        "x * 10",
+        "y = x + 100",
+        "x = x + 100",
+        "y = x * 100",
+        "y = z * 10"
     };
+
+    // Start the timer
+    auto start = std::chrono::high_resolution_clock::now();
+
 
     Matrix<double> m(3, 3, 1);
     const std::vector<std::vector<double>> data = {
@@ -94,8 +105,8 @@ int main()
     };
     const Matrix<double> b2 = {{-10}, {0}, {0}, {0}};
 
-    PrettyPrint::print(std::vector(1, Token(MatrixT, x)));
-    PrettyPrint::print(std::vector(1,  Token(MatrixT, Matrix<double>::Solve(A, b2) * 1000)));
+    //PrettyPrint::print(std::vector(1, Token(MatrixT, x)));
+    //PrettyPrint::print(std::vector(1,  Token(MatrixT, Matrix<double>::Solve(A, b2) * 1000)));
 
     Matrix<double> m2(3, 3, 1);
     const std::vector<std::vector<double>> data2 = {
@@ -122,7 +133,7 @@ int main()
     Matrix<double> m4(1000, 1000, 1);
     Matrix<double> m5(1000, 1, 1);
 
-    PrettyPrint::print(std::vector(1, Token(MatrixT, m4 * m5)));
+    //PrettyPrint::print(std::vector(1, Token(MatrixT, m4 * m5)));
 
     //auto x = (Evaluator::Evaluate(Parser::ToPostfix(v)));
 
@@ -135,13 +146,17 @@ int main()
     //     std::cout << a << std::endl;
     // }, x);
 
+    std::cout << sizeof(std::unique_ptr<Matrix<double>>) << std::endl;
+
+    std::unordered_map<std::string_view, Token> variables;
+
     int count = 1;
     for (const auto & i : infixEq) {
         try {
-            std::vector<Token> infixTokens = Lexer::Tokenize(i);
+            std::vector<Token> infixTokens = Lexer::Tokenize(i, variables);
             std::vector<Token> postfixTokens = Parser::ToPostfix(infixTokens);
             infixTokens.emplace_back(Equality);
-            auto result = Evaluator::Evaluate(postfixTokens);
+            auto result = Evaluator::Evaluate(postfixTokens, variables);
             std::visit([&infixTokens](auto&& a) {
                 using Type = std::decay_t<decltype(a)>;
                 if constexpr (std::is_same_v<Type, double>) {
@@ -149,7 +164,7 @@ int main()
                 } else if constexpr (std::is_same_v<Type, Matrix<double>>) {
                     infixTokens.emplace_back(MatrixT, a);
                 }
-            }, result);
+            }, result.data);
             std::cout << "Equation: " << count++ << std::endl;
             std::cout << "============================================="<< std::endl;
             PrettyPrint::print(infixTokens);
@@ -159,6 +174,14 @@ int main()
             std::cout << "============================================="<< std::endl;
         }
     }
+
+
+    // End the timer
+    auto end = std::chrono::high_resolution_clock::now();
+
+    // Calculate duration
+    std::chrono::duration<double> elapsed = end - start;
+    std::cout << "Execution time: " << elapsed.count() << " seconds" << std::endl;
 
     std::string eq = "";
     std::vector<std::string> hist;

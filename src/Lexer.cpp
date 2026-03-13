@@ -10,9 +10,9 @@
 #include "Parser.hpp"
 
 
-std::vector<Token> Lexer::Tokenize(const std::string_view input_) {
+std::vector<Token> Lexer::Tokenize(const std::string_view input_, std::unordered_map<std::string_view, Token>& variables) {
     Lexer lexer(input_);
-    return lexer.tokenizeCore();
+    return lexer.tokenizeCore(variables);
 }
 
 Lexer::Lexer(const std::string_view& input)
@@ -20,7 +20,7 @@ Lexer::Lexer(const std::string_view& input)
 {
 }
 
-std::vector<Token> Lexer::tokenizeCore() {
+std::vector<Token> Lexer::tokenizeCore(std::unordered_map<std::string_view, Token> &variables) {
     std::vector<Token> tokens;
 
     while (cursor < input.length()) {
@@ -32,12 +32,12 @@ std::vector<Token> Lexer::tokenizeCore() {
         }
 
         if (std::isdigit(currentChar)) {
-            tokens.emplace_back(tokenizeNumber());
+            tokens.push_back(std::move(tokenizeNumber()));
             continue;
         }
 
         if (std::isalpha(currentChar)) {
-            tokens.emplace_back(tokenizeIdentifier());
+            tokens.push_back(std::move(tokenizeIdentifier()));
             continue;
         }
 
@@ -77,7 +77,10 @@ std::vector<Token> Lexer::tokenizeCore() {
                 break;
             case '[':
                 cursor++;
-                tokens.emplace_back(tokenizeMatrix());
+                tokens.push_back(std::move(tokenizeMatrix(variables)));
+                break;
+            case '=':
+                tokens.emplace_back(Assignment);
                 break;
             default:
                 //* Unknown symbol
@@ -115,11 +118,12 @@ Token Lexer::tokenizeIdentifier() {
             return Token(Euler, M_E);
         return Token(type);
     } catch (const std::out_of_range& e) {
-        throw std::out_of_range("Invalid identifier: " + std::string(raw));
+        return Token(std::string(raw));
+        // throw std::out_of_range("Invalid identifier: " + std::string(raw));
     }
 }
 
-Token Lexer::tokenizeMatrix() {
+Token Lexer::tokenizeMatrix(std::unordered_map<std::string_view, Token>& variables) {
     auto data = std::vector<std::vector<double>>(1);
     if (input[cursor] == ']') throw std::invalid_argument("Empty matrix!");
     size_t row = 0;
@@ -129,8 +133,8 @@ Token Lexer::tokenizeMatrix() {
         //! REWRITE THE WHOLE LOGIC SO THAT IT WILL ACCEPT EACH [ROW, COL] ENTRY AS A SEPERATE EQUATION
         if (input[cursor] == ';') {
             if (start == cursor || input[start] == ';') throw std::invalid_argument("Empty matrix!");
-            auto tokens = Tokenize(input.substr(start, cursor - start));
-            data[row].push_back(std::get<double>(Evaluator::Evaluate(Parser::ToPostfix(tokens))));
+            auto tokens = Tokenize(input.substr(start, cursor - start), variables);
+            data[row].push_back(std::get<double>(Evaluator::Evaluate(Parser::ToPostfix(tokens), variables).data));
             cursor++;
             data.emplace_back();
             start = cursor;
@@ -144,8 +148,8 @@ Token Lexer::tokenizeMatrix() {
                 cursor++;
                 continue;
             }
-            auto tokens = Tokenize(s);
-            data[row].push_back(std::get<double>(Evaluator::Evaluate(Parser::ToPostfix(tokens))));
+            auto tokens = Tokenize(s, variables);
+            data[row].push_back(std::get<double>(Evaluator::Evaluate(Parser::ToPostfix(tokens), variables).data));
             if (row == 0) col++;
             cursor++;
             start = cursor;
@@ -154,7 +158,8 @@ Token Lexer::tokenizeMatrix() {
     }
     if (cursor > input.size()) throw std::invalid_argument("Unclosed matrix!");
     if (input[cursor] != ']') throw std::invalid_argument("Unclosed matrix!");
-    auto tokens = Tokenize(input.substr(start, cursor - start));
-    data[row].push_back(std::get<double>(Evaluator::Evaluate(Parser::ToPostfix(tokens))));
+    auto tokens = Tokenize(input.substr(start, cursor - start), variables);
+    data[row].push_back(std::get<double>(Evaluator::Evaluate(Parser::ToPostfix(tokens), variables).data));
     return Token(MatrixT, Matrix(data));
 }
+

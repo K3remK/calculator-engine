@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <cstdint>
 #include "Matrix.hpp"
+#include <memory>
 
 enum TokenType : uint64_t {
     Add                 = 1ULL << 0,  // 1
@@ -37,22 +38,23 @@ enum TokenType : uint64_t {
     Abs                 = 1ULL << 25,
     Euler               = 1ULL << 26,
     MatrixT             = 1ULL << 27,
-    InvMul              = 1ULL << 28,
-    Equality            = 1ULL << 29,   // TODO
-    Assignment          = 1ULL << 30,   // TODO
-    Variable            = 1ULL << 31    // TODO
+    RawMatrixT          = 1ULL << 28,
+    InvMul              = 1ULL << 29,
+    Equality            = 1ULL << 30,   // TODO
+    Assignment          = 1ULL << 31,   // TODO
+    Variable            = 1ULL << 32    // TODO
 };
 
 // ! When you add a new function or operator !!!! Dont forget to update the IsOperator and IsFunction functions
 // ! Trigonometric functions expects degrees not radians
 
-constexpr uint32_t MathFunctions            = Sin | Cos | Tan | Cot | Sqrt | Max | Min | Log | Ln | LogBase | Abs;
-constexpr uint32_t Numbers                  = Number | PI | Euler | MatrixT;
-constexpr uint32_t PostfixOperators         = Fact | Percent;
-constexpr uint32_t Operators                = Add | Sub | Mul | Div | Max | UnaryMinus | UnaryPlus | InvMul;
-constexpr uint32_t InfixOperators           = Add | Sub | Mul | Div | Pow | InvMul;
-constexpr uint32_t UnaryFunctions           = Sin | Cos | Tan | Cot | Sqrt | Log | Ln | Abs | UnaryPlus | UnaryMinus | Fact | Percent;
-constexpr uint32_t VariadicFunctions        = Max | Min;
+constexpr uint64_t MathFunctions            = Sin | Cos | Tan | Cot | Sqrt | Max | Min | Log | Ln | LogBase | Abs;
+constexpr uint64_t Numbers                  = Number | PI | Euler | MatrixT | RawMatrixT | Variable;
+constexpr uint64_t PostfixOperators         = Fact | Percent;
+constexpr uint64_t Operators                = Add | Sub | Mul | Div | Max | UnaryMinus | UnaryPlus | InvMul;
+constexpr uint64_t InfixOperators           = Add | Sub | Mul | Div | Pow | InvMul | Assignment;
+constexpr uint64_t UnaryFunctions           = Sin | Cos | Tan | Cot | Sqrt | Log | Ln | Abs | UnaryPlus | UnaryMinus | Fact | Percent;
+constexpr uint64_t VariadicFunctions        = Max | Min;
 
 
 struct OperatorInfo {
@@ -84,6 +86,7 @@ inline static const std::unordered_map<TokenType, OperatorInfo> operatorMap = {
     {Ln             ,           {3, false, 1}},
     {LogBase        ,           {3, false, 2}},
     {Abs            ,           {3, false, 1}},
+    {Assignment     ,           {-1, true, 2}},
 };
 
 // This variant can hold a double, an int, or a complex number.
@@ -94,11 +97,38 @@ struct Token {
     TokenType type;
     Value data;
     // ? can be even a vector in the future for multidimensional calculations
-    std::size_t argc = 0;
+    uint16_t argc = 0;
+    std::unique_ptr<std::string> variable_name;
 
     explicit Token(const TokenType type, Value data = {})
         : type(type), data(std::move(data))
     {
+        variable_name = nullptr;
+    }
+
+    explicit Token(const std::string& variable_name_, Value data = {})
+        : type(Variable), data(std::move(data)), variable_name(std::make_unique<std::string>(variable_name_)) {
+    }
+
+    Token(Token&& other) noexcept = default;
+    Token& operator=(Token&& other) noexcept = default;
+
+    // Copy constructor for Token to handle deep copy
+    Token(const Token& other) {
+        type = other.type;
+        data = other.data;
+        argc = other.argc;
+        variable_name = other.variable_name ? std::make_unique<std::string>(*other.variable_name) : nullptr;
+    }
+
+    // Copy assignment for Token to handle deep copy
+    Token& operator=(const Token& other) {
+        if (this == &other) return *this;
+        type = other.type;
+        data = other.data;
+        argc = other.argc;
+        variable_name = other.variable_name ? std::make_unique<std::string>(*other.variable_name) : nullptr;
+        return *this;
     }
 
     [[nodiscard]] bool IsOperator() const {
@@ -204,6 +234,9 @@ struct Token {
             case Equality:
             case Assignment:
                 os << "=";
+                break;
+            case Variable:
+                os << *variable_name;
                 break;
             default: throw std::invalid_argument("Unknown operator");
         }

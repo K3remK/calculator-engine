@@ -32,22 +32,23 @@ inline static const std::unordered_map<std::string_view, TokenType> typeMapper =
     {"ln", Ln},
     {"logbase", LogBase},
     {"abs", Abs},
-    {"e", Euler}
+    {"e", Euler},
+    {"=", Assignment}
 };
 
 class Lexer {
 public:
-    static std::vector<Token> Tokenize(std::string_view);
+    static std::vector<Token> Tokenize(std::string_view, std::unordered_map<std::string_view, Token> &variables);
 private:
     std::string_view input;
     std::size_t cursor;
 
     explicit Lexer(const std::string_view& input);
 
-    std::vector<Token> tokenizeCore();
+    std::vector<Token> tokenizeCore(std::unordered_map<std::string_view, Token> &variables);
     Token tokenizeNumber();
     Token tokenizeIdentifier();
-    Token tokenizeMatrix();
+    Token tokenizeMatrix(std::unordered_map<std::string_view, Token>& variables);
 };
 
 
