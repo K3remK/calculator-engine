@@ -5,8 +5,9 @@ CMakeFiles/
 Testing/
 build/
 .idea/
-design_analysis.md
-Refining Calculator Engine.md
+
+*.md
+!README.md
 
 Debug/
 
@@ -16,3 +17,5 @@ CMakeCache.txt
 compile_commands.json
 calculator-backend
 Makefile
+
+*.txt
