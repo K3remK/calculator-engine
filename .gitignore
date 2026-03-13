@@ -8,6 +8,8 @@ build/
 design_analysis.md
 Refining Calculator Engine.md
 
+Debug/
+
 CMakeCache.txt
 *.cmake
 *.tcl
