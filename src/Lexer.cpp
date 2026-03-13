@@ -105,7 +105,7 @@ Token Lexer::tokenizeNumber() {
 Token Lexer::tokenizeIdentifier() {
     const std::size_t start = cursor;
 
-    while (cursor < input.length() && std::isalnum(input[cursor])) {
+    while (cursor < input.length() && (std::isalnum(input[cursor]) || input[cursor] == '_')) {
         cursor++;
     }
 

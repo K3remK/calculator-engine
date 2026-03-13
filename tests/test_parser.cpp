@@ -4,7 +4,8 @@
 
 // Helper: convert expression string to postfix token type sequence
 static std::vector<TokenType> postfixTypes(const std::string& expr) {
-    auto infix = Lexer::Tokenize(expr);
+    std::unordered_map<std::string, Token> vars;
+    auto infix = Lexer::Tokenize(expr, vars);
     auto postfix = Parser::ToPostfix(infix);
     std::vector<TokenType> types;
     types.reserve(postfix.size());
@@ -86,7 +87,8 @@ TEST(ParserToPostfix, PowerRightAssociative) {
 
 TEST(ParserToPostfix, NegationAtStart) {
     // -3 + 1 → the -3 becomes a single negative number token
-    auto infix = Lexer::Tokenize("-3 + 1");
+    std::unordered_map<std::string, Token> vars;
+    auto infix = Lexer::Tokenize("-3 + 1", vars);
     auto postfix = Parser::ToPostfix(infix);
     ASSERT_EQ(postfix.size(), 4);  // -3, 1, +
     EXPECT_DOUBLE_EQ(std::get<double>(postfix[0].data), 3.0);
@@ -95,7 +97,8 @@ TEST(ParserToPostfix, NegationAtStart) {
 
 TEST(ParserToPostfix, DoubleNegation) {
     // 3--3+1  →  3 -3 - 1 +  (or similar)
-    auto infix = Lexer::Tokenize("3--3+1");
+    std::unordered_map<std::string, Token> vars;
+    auto infix = Lexer::Tokenize("3--3+1", vars);
     auto postfix = Parser::ToPostfix(infix);
     // Should have 5 tokens: 3, (-3), -, 1, +
     // The second number should be negative
@@ -115,7 +118,8 @@ TEST(ParserToPostfix, UnaryFunction) {
 
 TEST(ParserToPostfix, VariadicFunctionArgcTracking) {
     // max(1, 2, 3) → 1 2 3 max (with argc=3)
-    auto infix = Lexer::Tokenize("max(1, 2, 3)");
+    std::unordered_map<std::string, Token> vars;
+    auto infix = Lexer::Tokenize("max(1, 2, 3)", vars);
     const auto postfix = Parser::ToPostfix(infix);
 
     // Last token should be Max with argc == 3
@@ -159,7 +163,8 @@ TEST(ParserToPostfix, AbsUnaryFunction) {
 
 TEST(ParserToPostfix, LogBaseArgcTracking) {
     // logbase(8, 2) → 8 2 logbase (with argc=2)
-    auto infix = Lexer::Tokenize("logbase(8, 2)");
+    std::unordered_map<std::string, Token> vars;
+    auto infix = Lexer::Tokenize("logbase(8, 2)", vars);
     const auto postfix = Parser::ToPostfix(infix);
 
     ASSERT_FALSE(postfix.empty());
@@ -195,7 +200,8 @@ TEST(ParserToPostfix, PercentPostfix) {
 
 TEST(ParserToPostfix, ComplexPostfixWithGrouping) {
     // (4! + 10)!  — factorial of a grouped expression
-    auto infix = Lexer::Tokenize("(4! + 10)!");
+    std::unordered_map<std::string, Token> vars;
+    auto infix = Lexer::Tokenize("(4! + 10)!", vars);
     auto postfix = Parser::ToPostfix(infix);
     // Should end with Fact
     ASSERT_FALSE(postfix.empty());
@@ -205,8 +211,6 @@ TEST(ParserToPostfix, ComplexPostfixWithGrouping) {
 // ============================================================
 // Modulus operator
 // ============================================================
-
-
 
 TEST(ParserToPostfix, ModOperator) {
     // (2 + 3) * 4 mod 7  →  2 3 + 4 * 7 mod
@@ -220,13 +224,15 @@ TEST(ParserToPostfix, ModOperator) {
 // ============================================================
 
 TEST(ParserToPostfix, MismatchedParenthesesThrows) {
-    auto infix = Lexer::Tokenize("(2 + 3");
+    std::unordered_map<std::string, Token> vars;
+    auto infix = Lexer::Tokenize("(2 + 3", vars);
     EXPECT_THROW(Parser::ToPostfix(infix), std::runtime_error);
 }
 
 TEST(ParserToPostfix, InvalidTokenPlacementThrows) {
     // Two consecutive numbers without an operator: "2 3"
-    auto infix = Lexer::Tokenize("2 3");
+    std::unordered_map<std::string, Token> vars;
+    auto infix = Lexer::Tokenize("2 3", vars);
     EXPECT_THROW(Parser::ToPostfix(infix), std::runtime_error);
 }
 
@@ -236,7 +242,8 @@ TEST(ParserToPostfix, InvalidTokenPlacementThrows) {
 
 TEST(ParserToPostfix, MatrixMultiplication) {
     // [1 2; 3 4] * [5; 6]  →  MatrixT MatrixT Mul
-    auto infix = Lexer::Tokenize("[1 2; 3 4] * [5; 6]");
+    std::unordered_map<std::string, Token> vars;
+    auto infix = Lexer::Tokenize("[1 2; 3 4] * [5; 6]", vars);
     auto postfix = Parser::ToPostfix(infix);
     ASSERT_EQ(postfix.size(), 3u);
     EXPECT_EQ(postfix[0].type, MatrixT);
@@ -246,7 +253,8 @@ TEST(ParserToPostfix, MatrixMultiplication) {
 
 TEST(ParserToPostfix, MatrixInvMul) {
     // [1 2; 3 4] \ [5; 6]  →  MatrixT MatrixT InvMul
-    auto infix = Lexer::Tokenize("[1 2; 3 4] \\ [5; 6]");
+    std::unordered_map<std::string, Token> vars;
+    auto infix = Lexer::Tokenize("[1 2; 3 4] \\ [5; 6]", vars);
     auto postfix = Parser::ToPostfix(infix);
     ASSERT_EQ(postfix.size(), 3u);
     EXPECT_EQ(postfix[0].type, MatrixT);
@@ -256,7 +264,8 @@ TEST(ParserToPostfix, MatrixInvMul) {
 
 TEST(ParserToPostfix, MatrixScalarDivision) {
     // [1 2; 3 4] / 2  →  MatrixT 2 Div
-    auto infix = Lexer::Tokenize("[1 2; 3 4] / 2");
+    std::unordered_map<std::string, Token> vars;
+    auto infix = Lexer::Tokenize("[1 2; 3 4] / 2", vars);
     auto postfix = Parser::ToPostfix(infix);
     ASSERT_EQ(postfix.size(), 3u);
     EXPECT_EQ(postfix[0].type, MatrixT);
@@ -266,10 +275,50 @@ TEST(ParserToPostfix, MatrixScalarDivision) {
 
 TEST(ParserToPostfix, MatrixPower) {
     // [1 0; 0 1] ^ 3  →  MatrixT 3 Pow
-    auto infix = Lexer::Tokenize("[1 0; 0 1] ^ 3");
+    std::unordered_map<std::string, Token> vars;
+    auto infix = Lexer::Tokenize("[1 0; 0 1] ^ 3", vars);
     auto postfix = Parser::ToPostfix(infix);
     ASSERT_EQ(postfix.size(), 3u);
     EXPECT_EQ(postfix[0].type, MatrixT);
     EXPECT_EQ(postfix[1].type, Number);
     EXPECT_EQ(postfix[2].type, Pow);
+}
+
+// ============================================================
+// Variable tokens in postfix
+// ============================================================
+
+TEST(ParserToPostfix, SimpleAssignment) {
+    // x = 5  →  Variable Number Assignment
+    auto types = postfixTypes("x = 5");
+    std::vector<TokenType> expected = {Variable, Number, Assignment};
+    EXPECT_EQ(types, expected);
+}
+
+TEST(ParserToPostfix, VariableInArithmetic) {
+    // x + 3  →  Variable Number Add
+    auto types = postfixTypes("x + 3");
+    std::vector<TokenType> expected = {Variable, Number, Add};
+    EXPECT_EQ(types, expected);
+}
+
+TEST(ParserToPostfix, VariableWithMultipleOps) {
+    // x * y + z  →  Variable Variable Mul Variable Add
+    auto types = postfixTypes("x * y + z");
+    std::vector<TokenType> expected = {Variable, Variable, Mul, Variable, Add};
+    EXPECT_EQ(types, expected);
+}
+
+TEST(ParserToPostfix, VariableInFunction) {
+    // sin(x)  →  Variable Sin
+    auto types = postfixTypes("sin(x)");
+    std::vector<TokenType> expected = {Variable, Sin};
+    EXPECT_EQ(types, expected);
+}
+
+TEST(ParserToPostfix, AssignmentWithExpression) {
+    // x = 2 + 3  →  Variable 2 3 Add Assignment
+    auto types = postfixTypes("x = 2 + 3");
+    std::vector<TokenType> expected = {Variable, Number, Number, Add, Assignment};
+    EXPECT_EQ(types, expected);
 }

@@ -6,9 +6,17 @@
 
 // Helper: full pipeline evaluation
 static double evaluate(const std::string& expr) {
-    auto tokens = Lexer::Tokenize(expr);
+    std::unordered_map<std::string, Token> vars;
+    auto tokens = Lexer::Tokenize(expr, vars);
     auto postfix = Parser::ToPostfix(tokens);
-    return std::get<double>(Evaluator::Evaluate(postfix));
+    return std::get<double>(Evaluator::Evaluate(postfix, vars).data);
+}
+
+// Helper: full pipeline evaluation with a shared variable map
+static double evaluate(const std::string& expr, std::unordered_map<std::string, Token>& vars) {
+    auto tokens = Lexer::Tokenize(expr, vars);
+    auto postfix = Parser::ToPostfix(tokens);
+    return std::get<double>(Evaluator::Evaluate(postfix, vars).data);
 }
 
 // ============================================================
@@ -35,8 +43,6 @@ TEST(Integration, DivisionAndMul) {
 // Parenthesized expressions
 // ============================================================
 
-// BUG DETECTED: Parser treats '*' after ')' as unary minus → result is -4 instead of 20.
-// This test asserts the CORRECT expected result and will FAIL until the bug is fixed.
 TEST(Integration, ParenthesesOverridePrecedence) {
     EXPECT_DOUBLE_EQ(evaluate("(2 + 3) * 4"), 20.0);
 }
@@ -45,8 +51,6 @@ TEST(Integration, DivisionWithParens) {
     EXPECT_DOUBLE_EQ(evaluate("10 / (2 * 5)"), 1.0);
 }
 
-// BUG DETECTED: Same parser bug — operators after ')' become negation.
-// This test asserts the CORRECT expected result and will FAIL until the bug is fixed.
 TEST(Integration, NestedParentheses) {
     EXPECT_DOUBLE_EQ(evaluate("((1 + 2) * 3) - 4"), 5.0);
 }
@@ -59,8 +63,6 @@ TEST(Integration, ModulusOperator) {
     EXPECT_DOUBLE_EQ(evaluate("100 mod 13"), 9.0);
 }
 
-// BUG DETECTED: Parser bug — '*' after ')' is lost.
-// This test asserts the CORRECT expected result and will FAIL until the bug is fixed.
 TEST(Integration, ParenExpressionWithMod) {
     // (2 + 3) * 4 mod 7 = 20 mod 7 = 6
     EXPECT_DOUBLE_EQ(evaluate("(2 + 3) * 4 mod 7"), 6.0);
@@ -75,8 +77,6 @@ TEST(Integration, SinAndCos) {
     EXPECT_NEAR(evaluate("sin(0) + cos(0)"), 1.0, 1e-9);
 }
 
-// BUG DETECTED: Parser treats '+' after ')' as unary minus → 100 becomes -100.
-// This test asserts the CORRECT expected result and will FAIL until the bug is fixed.
 TEST(Integration, SinPlusConstant) {
     // sin(5) + 100 ≈ 100.087
     double result = evaluate("sin(5) + 100");
@@ -136,8 +136,6 @@ TEST(Integration, NestedMinMax) {
     EXPECT_NEAR(result, std::sqrt(5.0), 1e-9);
 }
 
-// BUG DETECTED: Parser treats '/' after ')' as unary minus → 5 becomes -5.
-// This test asserts the CORRECT expected result and will FAIL until the bug is fixed.
 TEST(Integration, SqrtDivision) {
     // sqrt(16) / 5 = 4 / 5 = 0.8
     EXPECT_DOUBLE_EQ(evaluate("sqrt(16) / 5"), 0.8);
@@ -228,9 +226,11 @@ TEST(Integration, LogBaseInExpression) {
 
 // Helper: full pipeline evaluation returning a matrix
 static Matrix<double> evaluateMatrix(const std::string& expr) {
-    auto tokens = Lexer::Tokenize(expr);
+    std::unordered_map<std::string, Token> vars;
+    auto tokens = Lexer::Tokenize(expr, vars);
     auto postfix = Parser::ToPostfix(tokens);
-    return std::get<Matrix<double>>(Evaluator::Evaluate(postfix));
+    auto result = Evaluator::Evaluate(postfix, vars);
+    return *std::get<std::unique_ptr<Matrix<double>>>(std::move(result.data));
 }
 
 TEST(Integration, MatrixMultiplication) {
@@ -293,23 +293,26 @@ TEST(Integration, LinearSolve3x3) {
 
 TEST(Integration, SingularMatrixSolveThrows) {
     // [1 2 3; 4 5 6; 7 8 9] \ [1; 2; 3] — singular matrix
-    auto tokens = Lexer::Tokenize("[1 2 3; 4 5 6; 7 8 9] \\ [1; 2; 3]");
+    std::unordered_map<std::string, Token> vars;
+    auto tokens = Lexer::Tokenize("[1 2 3; 4 5 6; 7 8 9] \\ [1; 2; 3]", vars);
     auto postfix = Parser::ToPostfix(tokens);
-    EXPECT_THROW(Evaluator::Evaluate(postfix), std::runtime_error);
+    EXPECT_THROW(Evaluator::Evaluate(postfix, vars), std::runtime_error);
 }
 
 TEST(Integration, NonSquareMatrixSolveThrows) {
     // [1 2 3; 4 5 6] \ [1; 2] — not square
-    auto tokens = Lexer::Tokenize("[1 2 3; 4 5 6] \\ [1; 2]");
+    std::unordered_map<std::string, Token> vars;
+    auto tokens = Lexer::Tokenize("[1 2 3; 4 5 6] \\ [1; 2]", vars);
     auto postfix = Parser::ToPostfix(tokens);
-    EXPECT_THROW(Evaluator::Evaluate(postfix), std::runtime_error);
+    EXPECT_THROW(Evaluator::Evaluate(postfix, vars), std::runtime_error);
 }
 
 TEST(Integration, MatrixSizeMismatchThrows) {
     // [1 2; 3 4] + [1 2 3; 4 5 6] — size mismatch
-    auto tokens = Lexer::Tokenize("[1 2; 3 4] + [1 2 3; 4 5 6]");
+    std::unordered_map<std::string, Token> vars;
+    auto tokens = Lexer::Tokenize("[1 2; 3 4] + [1 2 3; 4 5 6]", vars);
     auto postfix = Parser::ToPostfix(tokens);
-    EXPECT_THROW(Evaluator::Evaluate(postfix), std::runtime_error);
+    EXPECT_THROW(Evaluator::Evaluate(postfix, vars), std::runtime_error);
 }
 
 TEST(Integration, MatrixWithExprInEntries) {
@@ -318,4 +321,101 @@ TEST(Integration, MatrixWithExprInEntries) {
     auto result = evaluateMatrix("[2^2 1; 1 2^2]");
     EXPECT_DOUBLE_EQ(result[0][0], 4.0);
     EXPECT_DOUBLE_EQ(result[1][1], 4.0);
+}
+
+// ============================================================
+// Variable support — end-to-end
+// ============================================================
+
+TEST(Integration, SimpleVariableAssignment) {
+    // x = 5 should store 5 and return the variable
+    std::unordered_map<std::string, Token> vars;
+    auto tokens = Lexer::Tokenize("x = 5", vars);
+    auto postfix = Parser::ToPostfix(tokens);
+    auto result = Evaluator::Evaluate(postfix, vars);
+    EXPECT_DOUBLE_EQ(std::get<double>(result.data), 5.0);
+    ASSERT_TRUE(vars.contains("x"));
+    EXPECT_DOUBLE_EQ(std::get<double>(vars.at("x").data), 5.0);
+}
+
+TEST(Integration, VariableUsageAfterAssignment) {
+    // x = 5, then x + 3 = 8
+    std::unordered_map<std::string, Token> vars;
+    evaluate("x = 5", vars);
+    EXPECT_DOUBLE_EQ(evaluate("x + 3", vars), 8.0);
+}
+
+TEST(Integration, VariableReassignment) {
+    // x = 5, then x = 10, then x + 1 = 11
+    std::unordered_map<std::string, Token> vars;
+    evaluate("x = 5", vars);
+    evaluate("x = 10", vars);
+    EXPECT_DOUBLE_EQ(evaluate("x + 1", vars), 11.0);
+}
+
+TEST(Integration, VariableInComplexExpression) {
+    // x = 4, then sqrt(x) + x^2 = 2 + 16 = 18
+    std::unordered_map<std::string, Token> vars;
+    evaluate("x = 4", vars);
+    EXPECT_DOUBLE_EQ(evaluate("sqrt(x) + x^2", vars), 18.0);
+}
+
+TEST(Integration, MultipleVariables) {
+    // x = 3, y = 4, then x + y = 7
+    std::unordered_map<std::string, Token> vars;
+    evaluate("x = 3", vars);
+    evaluate("y = 4", vars);
+    EXPECT_DOUBLE_EQ(evaluate("x + y", vars), 7.0);
+}
+
+TEST(Integration, VariableMultiplication) {
+    // x = 6, y = 7, then x * y = 42
+    std::unordered_map<std::string, Token> vars;
+    evaluate("x = 6", vars);
+    evaluate("y = 7", vars);
+    EXPECT_DOUBLE_EQ(evaluate("x * y", vars), 42.0);
+}
+
+TEST(Integration, VariableInFunction) {
+    // x = 90, then sin(x) = 1
+    std::unordered_map<std::string, Token> vars;
+    evaluate("x = 90", vars);
+    EXPECT_NEAR(evaluate("sin(x)", vars), 1.0, 1e-9);
+}
+
+TEST(Integration, VariableAssignmentWithExpression) {
+    // x = 2 + 3, then x should be 5
+    std::unordered_map<std::string, Token> vars;
+    evaluate("x = 2 + 3", vars);
+    EXPECT_DOUBLE_EQ(evaluate("x", vars), 5.0);
+}
+
+TEST(Integration, VariableAssignedFromOtherVariable) {
+    // x = 5, y = x + 1, then y should be 6
+    std::unordered_map<std::string, Token> vars;
+    evaluate("x = 5", vars);
+    evaluate("y = x + 1", vars);
+    EXPECT_DOUBLE_EQ(evaluate("y", vars), 6.0);
+}
+
+TEST(Integration, UndefinedVariableThrows) {
+    // Using a variable that doesn't exist should throw
+    std::unordered_map<std::string, Token> vars;
+    auto tokens = Lexer::Tokenize("x + 3", vars);
+    auto postfix = Parser::ToPostfix(tokens);
+    EXPECT_THROW(Evaluator::Evaluate(postfix, vars), std::runtime_error);
+}
+
+TEST(Integration, VariableWithNegation) {
+    // x = 5, then -x + 10 = 5
+    std::unordered_map<std::string, Token> vars;
+    evaluate("x = 5", vars);
+    EXPECT_DOUBLE_EQ(evaluate("-x + 10", vars), 5.0);
+}
+
+TEST(Integration, VariableWithPiAndEuler) {
+    // r = 2, then pi * r^2 ≈ 4π
+    std::unordered_map<std::string, Token> vars;
+    evaluate("r = 2", vars);
+    EXPECT_NEAR(evaluate("pi * r^2", vars), M_PI * 4.0, 1e-9);
 }

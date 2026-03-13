@@ -1,10 +1,10 @@
 <p align="center">
   <h1 align="center">🧮 Calculator Engine</h1>
   <p align="center">
-    <strong>A fast, extensible mathematical expression evaluator with matrix support — built from scratch in modern C++17</strong>
+    <strong>A fast, extensible mathematical expression evaluator with matrix and variable support — built from scratch in modern C++20</strong>
   </p>
   <p align="center">
-    <img src="https://img.shields.io/badge/C%2B%2B-17-blue?style=for-the-badge&logo=cplusplus&logoColor=white" alt="C++17">
+    <img src="https://img.shields.io/badge/C%2B%2B-20-blue?style=for-the-badge&logo=cplusplus&logoColor=white" alt="C++20">
     <img src="https://img.shields.io/badge/CMake-3.14+-064F8C?style=for-the-badge&logo=cmake&logoColor=white" alt="CMake">
     <img src="https://img.shields.io/badge/Tests-GoogleTest-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="GoogleTest">
     <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
@@ -47,6 +47,7 @@ Output:  5.0
 | **Functions**         | `sqrt` `min` `max` `abs` `log` (base 10) `ln` (natural) `logbase(value, base)`                                                                                     |
 | **Postfix Operators** | `!` (factorial) `%` (percent) — e.g. `5!`, `80%`                                                                                                                   |
 | **Constants**         | `pi` (≈ 3.14159) `e` — Euler's number (≈ 2.71828)                                                                                                                  |
+| **Variables**         | Assignment and lookup: `x = 5`, `y = x + 3`, `sin(x) * y`                                                                                                          |
 | **Matrix Literals**   | Inline syntax: `[1 2 3; 4 5 6]` — rows separated by `;`, columns by spaces or commas. Each entry can be a full expression (e.g. `[2^2 cos(0); sin(0)+1 sqrt(16)]`) |
 | **Matrix Arithmetic** | `+` `-` `*` `/` `^` between matrices and/or scalars (mixed-type expressions)                                                                                       |
 | **Matrix Operations** | Transpose, Identity, Determinant, Inverse, element-wise `abs`, and integer power (`A^n`)                                                                           |
@@ -65,7 +66,7 @@ The engine is split into **six cleanly separated modules**, each with a single r
 
 ### `Token` — Type System
 
-Defines all supported token types using bitmask enums for efficient type checking. Contains operator metadata (precedence, associativity) and the polymorphic `Value` type (`std::variant<double, Matrix<double>>`) that enables the engine to seamlessly operate on both scalars and matrices.
+Defines all supported token types using bitmask enums for efficient type checking. Contains operator metadata (precedence, associativity) and the polymorphic `Value` type (`std::variant<double, std::unique_ptr<Matrix<double>>>`) that enables the engine to seamlessly operate on both scalars and matrices. Includes a `variable_name` field for variable tracking.
 
 ### `Matrix` — Matrix Data Structure
 
@@ -96,7 +97,7 @@ Implements the **Shunting-Yard algorithm** to convert infix token sequences into
 
 ### `Evaluator` — Stack-Based Computation
 
-Walks the postfix token sequence and evaluates it using a stack. Leverages `std::visit` with the `overloaded` pattern to dynamically dispatch unary, binary, and variadic operations. Correctly handles mixed-type operations (e.g., `Matrix * scalar`, `scalar + Matrix`) through `std::variant` visitor dispatch. The `InvMul` (`\`) operator calls `Matrix::Solve(A, b)` for linear system solving.
+Walks the postfix token sequence and evaluates it using a stack. Leverages `std::visit` with the `overloaded` pattern to dynamically dispatch unary, binary, and variadic operations. Correctly handles mixed-type operations (e.g., `Matrix * scalar`, `scalar + Matrix`) through `std::variant` visitor dispatch. Assigns and looks up values in a provided `variables` table to resolve variable state. The `InvMul` (`\`) operator calls `Matrix::Solve(A, b)` for linear system solving.
 
 ### `PrettyPrint` — Output Rendering
 
@@ -129,7 +130,7 @@ Renders expression results with vertically-centered alignment. Matrices are disp
 
 ## 📦 Prerequisites
 
-- **C++17** compatible compiler (`g++ 7+`, `clang++ 5+`, or MSVC 2017+)
+- **C++20** compatible compiler (`g++ 10+`, `clang++ 10+`, or MSVC 2019+)
 - **CMake** 3.14 or higher
 
 ---
@@ -163,6 +164,17 @@ cos(-pi)        = -1
 log(100)        = 2
 logbase(8, 2)   = 3
 abs(-5)         = 5
+```
+
+Variables:
+
+```
+x = 5           = 5
+y = x + 3       = 8
+sin(x) * y      = 0.697245...
+my_matrix = [1 2; 3 4]
+my_matrix * 2   = [ 2 4 ]
+                  [ 6 8 ]
 ```
 
 Matrix expressions:
@@ -390,24 +402,48 @@ Stack trace:
 Result: -2
 ```
 
+### Variable Example
+
+Tracing `x = 5`:
+
+**1. Lexing** — produces `[ Variable("x"), Assignment, 5 ]`
+
+**2. Parsing** — directly to postfix:
+
+```
+Postfix: [ Variable("x"), 5, Assignment ]
+```
+
+**3. Evaluation**
+
+```
+Stack trace:
+  push Variable("x") → [Variable("x")]
+  push 5             → [Variable("x"), 5]
+  apply =            → [5]     (Updates `variables` map: x = 5)
+
+Result: 5
+```
+
 ---
 
 ## 🔑 Key Design Decisions
 
-| Decision                                               | Rationale                                                                                                              |
-| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| **Bitmask enum for `TokenType`**                       | Enables fast category checks via bitwise AND (e.g., `type & MathFunctions`)                                            |
-| **`std::variant<double, Matrix<double>>` for `Value`** | Unified type-safe value representation — the engine seamlessly handles scalars and matrices through the same pipeline  |
-| **`overloaded` visitor pattern**                       | Clean dispatch of mixed-type binary operations (matrix×scalar, scalar+matrix, etc.) without manual type-checking       |
-| **`\` backslash (InvMul) operator**                    | MATLAB-inspired `A \ b` syntax for solving linear systems; dispatches to `Matrix::Solve` via LU decomposition          |
-| **Header-only `Matrix<T>` template**                   | Generic matrix class supporting any numeric type; all operator overloads defined inline for zero-overhead abstractions |
-| **Bracket `[...]` matrix literal syntax**              | MATLAB-inspired inline notation (`[1 2; 3 4]`), parsed directly by the Lexer into `Matrix<double>` tokens              |
-| **Shunting-Yard algorithm**                            | Industry-standard O(n) algorithm for infix-to-postfix conversion                                                       |
-| **Degrees for trigonometry**                           | More intuitive for end-users (internal conversion: `value × π / 180`)                                                  |
-| **Static `Tokenize` / `ToPostfix` / `Evaluate`**       | Functional-style API — no need to manage object lifecycle                                                              |
-| **Context-based unary detection**                      | Parser detects unary `-`/`+` when no operand precedes them, avoiding the need for a separate pre-processing pass       |
-| **`PrettyPrint` with vertical centering**              | Multi-line matrix output is vertically aligned with surrounding operators for readable equation display                |
-| **GoogleTest via FetchContent**                        | Zero-config testing — CMake downloads GoogleTest automatically, no manual setup required                               |
+| Decision                                                    | Rationale                                                                                                                            |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **Bitmask enum for `TokenType`**                            | Enables fast category checks via bitwise AND (e.g., `type & MathFunctions`)                                                          |
+| **`std::variant<double, std::unique_ptr<Matrix<double>>>`** | Unified type-safe value representation — the engine seamlessly handles scalars and matrices while preventing large stack allocations |
+| **`overloaded` visitor pattern**                            | Clean dispatch of mixed-type binary operations (matrix×scalar, scalar+matrix, etc.) without manual type-checking                     |
+| **`\` backslash (InvMul) operator**                         | MATLAB-inspired `A \ b` syntax for solving linear systems; dispatches to `Matrix::Solve` via LU decomposition                        |
+| **Header-only `Matrix<T>` template**                        | Generic matrix class supporting any numeric type; all operator overloads defined inline for zero-overhead abstractions               |
+| **Bracket `[...]` matrix literal syntax**                   | MATLAB-inspired inline notation (`[1 2; 3 4]`), parsed directly by the Lexer into `Matrix<double>` tokens                            |
+| **Shunting-Yard algorithm**                                 | Industry-standard O(n) algorithm for infix-to-postfix conversion                                                                     |
+| **Degrees for trigonometry**                                | More intuitive for end-users (internal conversion: `value × π / 180`)                                                                |
+| **Static `Tokenize` / `ToPostfix` / `Evaluate`**            | Functional-style API — no need to manage object lifecycle                                                                            |
+| **Context-based unary detection**                           | Parser detects unary `-`/`+` when no operand precedes them, avoiding the need for a separate pre-processing pass                     |
+| **Variable map passing**                                    | `Lexer` and `Evaluator` accept a reference to an `unordered_map` spanning expressions, enabling persistent state                     |
+| **`PrettyPrint` with vertical centering**                   | Multi-line matrix output is vertically aligned with surrounding operators for readable equation display                              |
+| **GoogleTest via FetchContent**                             | Zero-config testing — CMake downloads GoogleTest automatically, no manual setup required                                             |
 
 ---
 
@@ -426,8 +462,9 @@ Result: -2
 - [x] Pretty-printed output with vertically-centered matrix rendering
 - [x] Matrix determinant and inverse (Gauss-Jordan elimination)
 - [x] Linear system solver (`A \ b`) via LU decomposition with partial pivoting
-- [ ] Variable support (`x = 5; 2*x + 3`)
+- [x] Variable support (`x = 5; 2*x + 3`)
 - [ ] Interactive REPL mode
+- [ ] System of equations shorthand solver (e.g., `solve(x+y=2, x-y=0)`)
 
 ---
 
@@ -450,5 +487,5 @@ This project is open source and available under the [MIT License](LICENSE).
 ---
 
 <p align="center">
-  <sub>Built with ❤️ and modern C++17</sub>
+  <sub>Built with ❤️ and modern C++20</sub>
 </p>

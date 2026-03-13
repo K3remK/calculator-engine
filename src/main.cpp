@@ -79,7 +79,9 @@ int main()
         "y = x + 100",
         "x = x + 100",
         "y = x * 100",
-        "y = z * 10"
+        "y = z * 10",
+        "my_matrix = [1 2; 3 4]",
+        "my_matrix * 2"
     };
 
     // Start the timer

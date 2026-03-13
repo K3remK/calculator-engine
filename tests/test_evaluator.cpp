@@ -7,7 +7,8 @@
 // This lets us test the Evaluator in isolation (without Lexer/Parser)
 
 static double evalPostfix(const std::vector<Token>& tokens) {
-    return std::get<double>(Evaluator::Evaluate(tokens));
+    std::unordered_map<std::string, Token> vars;
+    return std::get<double>(Evaluator::Evaluate(tokens, vars).data);
 }
 
 // ============================================================
@@ -59,7 +60,7 @@ TEST(EvaluatorEvaluate, SinDegrees) {
     auto t1 = Token(Number, 90.0);
     auto t2 = Token(Sin);
     t2.argc = 1;
-    std::vector<Token> postfix = {t1, t2};
+    std::vector<Token> postfix = {std::move(t1), std::move(t2)};
     EXPECT_NEAR(evalPostfix(postfix), 1.0, 1e-9);
 }
 
@@ -68,7 +69,7 @@ TEST(EvaluatorEvaluate, CosDegrees) {
     auto t1 = Token(Number, 0.0);
     auto t2 = Token(Cos);
     t2.argc = 1;
-    std::vector<Token> postfix = {t1, t2};
+    std::vector<Token> postfix = {std::move(t1), std::move(t2)};
     EXPECT_NEAR(evalPostfix(postfix), 1.0, 1e-9);
 }
 
@@ -77,7 +78,7 @@ TEST(EvaluatorEvaluate, SqrtValue) {
     auto t1 = Token(Number, 16.0);
     auto t2 = Token(Sqrt);
     t2.argc = 1;
-    std::vector<Token> postfix = {t1, t2};
+    std::vector<Token> postfix = {std::move(t1), std::move(t2)};
     EXPECT_DOUBLE_EQ(evalPostfix(postfix), 4.0);
 }
 
@@ -101,7 +102,11 @@ TEST(EvaluatorEvaluate, MinVariadic) {
     // min(5, 3, 8) = 3.0
     Token minTok(Min);
     minTok.argc = 3;
-    std::vector<Token> postfix = {Token(Number, 5.0), Token(Number, 3.0), Token(Number, 8.0), minTok};
+    std::vector<Token> postfix;
+    postfix.push_back(Token(Number, 5.0));
+    postfix.push_back(Token(Number, 3.0));
+    postfix.push_back(Token(Number, 8.0));
+    postfix.push_back(std::move(minTok));
     EXPECT_DOUBLE_EQ(evalPostfix(postfix), 3.0);
 }
 
@@ -109,7 +114,11 @@ TEST(EvaluatorEvaluate, MaxVariadic) {
     // max(5, 3, 8) = 8.0
     Token maxTok(Max);
     maxTok.argc = 3;
-    std::vector<Token> postfix = {Token(Number, 5.0), Token(Number, 3.0), Token(Number, 8.0), maxTok};
+    std::vector<Token> postfix;
+    postfix.push_back(Token(Number, 5.0));
+    postfix.push_back(Token(Number, 3.0));
+    postfix.push_back(Token(Number, 8.0));
+    postfix.push_back(std::move(maxTok));
     EXPECT_DOUBLE_EQ(evalPostfix(postfix), 8.0);
 }
 
@@ -119,25 +128,23 @@ TEST(EvaluatorEvaluate, MaxVariadic) {
 
 TEST(EvaluatorEvaluate, MultiStepExpression) {
     // 2 + 3 * 4 = 14  →  postfix: 2 3 4 * +
-    std::vector<Token> postfix = {
-        Token(Number, 2.0),
-        Token(Number, 3.0),
-        Token(Number, 4.0),
-        Token(Mul),
-        Token(Add)
-    };
+    std::vector<Token> postfix;
+    postfix.push_back(Token(Number, 2.0));
+    postfix.push_back(Token(Number, 3.0));
+    postfix.push_back(Token(Number, 4.0));
+    postfix.push_back(Token(Mul));
+    postfix.push_back(Token(Add));
     EXPECT_DOUBLE_EQ(evalPostfix(postfix), 14.0);
 }
 
 TEST(EvaluatorEvaluate, ParenthesizedExpression) {
     // (2 + 3) * 4 = 20  →  postfix: 2 3 + 4 *
-    std::vector<Token> postfix = {
-        Token(Number, 2.0),
-        Token(Number, 3.0),
-        Token(Add),
-        Token(Number, 4.0),
-        Token(Mul)
-    };
+    std::vector<Token> postfix;
+    postfix.push_back(Token(Number, 2.0));
+    postfix.push_back(Token(Number, 3.0));
+    postfix.push_back(Token(Add));
+    postfix.push_back(Token(Number, 4.0));
+    postfix.push_back(Token(Mul));
     EXPECT_DOUBLE_EQ(evalPostfix(postfix), 20.0);
 }
 
@@ -162,7 +169,7 @@ TEST(EvaluatorEvaluate, LogValue) {
     auto t1 = Token(Number, 100.0);
     auto t2 = Token(Log);
     t2.argc = 1;
-    std::vector<Token> postfix = {t1, t2};
+    std::vector<Token> postfix = {std::move(t1), std::move(t2)};
     EXPECT_DOUBLE_EQ(evalPostfix(postfix), 2.0);
 }
 
@@ -171,7 +178,7 @@ TEST(EvaluatorEvaluate, LnValue) {
     auto t1 = Token(Number, 1.0);
     auto t2 = Token(Ln);
     t2.argc = 1;
-    std::vector<Token> postfix = {t1, t2};
+    std::vector<Token> postfix = {std::move(t1), std::move(t2)};
     EXPECT_DOUBLE_EQ(evalPostfix(postfix), 0.0);
 }
 
@@ -180,7 +187,7 @@ TEST(EvaluatorEvaluate, AbsNegative) {
     auto t1 = Token(Number, -5.0);
     auto t2 = Token(Abs);
     t2.argc = 1;
-    std::vector<Token> postfix = {t1, t2};
+    std::vector<Token> postfix = {std::move(t1), std::move(t2)};
     EXPECT_DOUBLE_EQ(evalPostfix(postfix), 5.0);
 }
 
@@ -189,7 +196,7 @@ TEST(EvaluatorEvaluate, AbsPositive) {
     auto t1 = Token(Number, 3.0);
     auto t2 = Token(Abs);
     t2.argc = 1;
-    std::vector<Token> postfix = {t1, t2};
+    std::vector<Token> postfix = {std::move(t1), std::move(t2)};
     EXPECT_DOUBLE_EQ(evalPostfix(postfix), 3.0);
 }
 
@@ -199,7 +206,10 @@ TEST(EvaluatorEvaluate, LogBaseValue) {
     auto t2 = Token(Number, 2.0);
     auto t3 = Token(LogBase);
     t3.argc = 2;
-    std::vector<Token> postfix = {t1, t2, t3};
+    std::vector<Token> postfix;
+    postfix.push_back(std::move(t1));
+    postfix.push_back(std::move(t2));
+    postfix.push_back(std::move(t3));
     EXPECT_NEAR(evalPostfix(postfix), 3.0, 1e-9);
 }
 
@@ -211,7 +221,9 @@ TEST(EvaluatorEvaluate, FunctionWithZeroArgcThrows) {
     // sin() with argc=0 should throw
     auto t = Token(Sin);
     t.argc = 0;
-    std::vector<Token> postfix = {Token(Number, 1.0), t};
+    std::vector<Token> postfix;
+    postfix.push_back(Token(Number, 1.0));
+    postfix.push_back(std::move(t));
     EXPECT_THROW(evalPostfix(postfix), std::runtime_error);
 }
 
@@ -219,7 +231,10 @@ TEST(EvaluatorEvaluate, UnaryFuncWithTooManyArgsThrows) {
     // log with argc=2 should throw (it's unary)
     auto t = Token(Log);
     t.argc = 2;
-    std::vector<Token> postfix = {Token(Number, 1.0), Token(Number, 2.0), t};
+    std::vector<Token> postfix;
+    postfix.push_back(Token(Number, 1.0));
+    postfix.push_back(Token(Number, 2.0));
+    postfix.push_back(std::move(t));
     EXPECT_THROW(evalPostfix(postfix), std::runtime_error);
 }
 
@@ -227,7 +242,9 @@ TEST(EvaluatorEvaluate, LogBaseWrongArgcThrows) {
     // logbase with argc=1 should throw (needs exactly 2)
     auto t = Token(LogBase);
     t.argc = 1;
-    std::vector<Token> postfix = {Token(Number, 8.0), t};
+    std::vector<Token> postfix;
+    postfix.push_back(Token(Number, 8.0));
+    postfix.push_back(std::move(t));
     EXPECT_THROW(evalPostfix(postfix), std::runtime_error);
 }
 
@@ -236,14 +253,19 @@ TEST(EvaluatorEvaluate, LogBaseWrongArgcThrows) {
 // ============================================================
 
 static Matrix<double> evalPostfixMatrix(const std::vector<Token>& tokens) {
-    return std::get<Matrix<double>>(Evaluator::Evaluate(tokens));
+    std::unordered_map<std::string, Token> vars;
+    auto result = Evaluator::Evaluate(tokens, vars);
+    return *std::get<std::unique_ptr<Matrix<double>>>(std::move(result.data));
 }
 
 TEST(EvaluatorEvaluate, MatrixMultiplication) {
     // [1 2; 3 4] * [5; 6] = [17; 39]
     Matrix<double> a = {{1, 2}, {3, 4}};
     Matrix<double> b(std::vector<std::vector<double>>{{5}, {6}});
-    std::vector<Token> postfix = {Token(MatrixT, a), Token(MatrixT, b), Token(Mul)};
+    std::vector<Token> postfix;
+    postfix.push_back(Token(MatrixT, std::make_unique<Matrix<double>>(a)));
+    postfix.push_back(Token(MatrixT, std::make_unique<Matrix<double>>(b)));
+    postfix.push_back(Token(Mul));
     auto result = evalPostfixMatrix(postfix);
     EXPECT_NEAR(result[0][0], 17.0, 1e-9);
     EXPECT_NEAR(result[1][0], 39.0, 1e-9);
@@ -252,7 +274,10 @@ TEST(EvaluatorEvaluate, MatrixMultiplication) {
 TEST(EvaluatorEvaluate, MatrixScalarMultiply) {
     // [1 2; 3 4] * 2 = [2 4; 6 8]
     Matrix<double> a = {{1, 2}, {3, 4}};
-    std::vector<Token> postfix = {Token(MatrixT, a), Token(Number, 2.0), Token(Mul)};
+    std::vector<Token> postfix;
+    postfix.push_back(Token(MatrixT, std::make_unique<Matrix<double>>(a)));
+    postfix.push_back(Token(Number, 2.0));
+    postfix.push_back(Token(Mul));
     auto result = evalPostfixMatrix(postfix);
     EXPECT_DOUBLE_EQ(result[0][0], 2.0);
     EXPECT_DOUBLE_EQ(result[1][1], 8.0);
@@ -261,7 +286,10 @@ TEST(EvaluatorEvaluate, MatrixScalarMultiply) {
 TEST(EvaluatorEvaluate, MatrixScalarDivide) {
     // [10 20; 30 40] / 10 = [1 2; 3 4]
     Matrix<double> a = {{10, 20}, {30, 40}};
-    std::vector<Token> postfix = {Token(MatrixT, a), Token(Number, 10.0), Token(Div)};
+    std::vector<Token> postfix;
+    postfix.push_back(Token(MatrixT, std::make_unique<Matrix<double>>(a)));
+    postfix.push_back(Token(Number, 10.0));
+    postfix.push_back(Token(Div));
     auto result = evalPostfixMatrix(postfix);
     EXPECT_DOUBLE_EQ(result[0][0], 1.0);
     EXPECT_DOUBLE_EQ(result[1][1], 4.0);
@@ -270,7 +298,10 @@ TEST(EvaluatorEvaluate, MatrixScalarDivide) {
 TEST(EvaluatorEvaluate, MatrixPower) {
     // [1 0; 0 1] ^ 3 = identity (identity to any power is identity)
     Matrix<double> id = {{1, 0}, {0, 1}};
-    std::vector<Token> postfix = {Token(MatrixT, id), Token(Number, 3.0), Token(Pow)};
+    std::vector<Token> postfix;
+    postfix.push_back(Token(MatrixT, std::make_unique<Matrix<double>>(id)));
+    postfix.push_back(Token(Number, 3.0));
+    postfix.push_back(Token(Pow));
     auto result = evalPostfixMatrix(postfix);
     EXPECT_DOUBLE_EQ(result[0][0], 1.0);
     EXPECT_DOUBLE_EQ(result[0][1], 0.0);
@@ -282,7 +313,10 @@ TEST(EvaluatorEvaluate, MatrixInvMul) {
     // [2 1; 5 3] \ [8; 21] = [3; 2]
     Matrix<double> A = {{2, 1}, {5, 3}};
     Matrix<double> b(std::vector<std::vector<double>>{{8}, {21}});
-    std::vector<Token> postfix = {Token(MatrixT, A), Token(MatrixT, b), Token(InvMul)};
+    std::vector<Token> postfix;
+    postfix.push_back(Token(MatrixT, std::make_unique<Matrix<double>>(A)));
+    postfix.push_back(Token(MatrixT, std::make_unique<Matrix<double>>(b)));
+    postfix.push_back(Token(InvMul));
     auto result = evalPostfixMatrix(postfix);
     EXPECT_NEAR(result[0][0], 3.0, 1e-9);
     EXPECT_NEAR(result[1][0], 2.0, 1e-9);
@@ -297,6 +331,87 @@ TEST(EvaluatorEvaluate, InvMulScalarThrows) {
 TEST(EvaluatorEvaluate, ModulusMatrixThrows) {
     // Modulus with matrix should throw
     Matrix<double> a = {{1, 2}, {3, 4}};
-    std::vector<Token> postfix = {Token(MatrixT, a), Token(Number, 2.0), Token(Mod)};
-    EXPECT_THROW(Evaluator::Evaluate(postfix), std::invalid_argument);
+    std::vector<Token> postfix;
+    postfix.push_back(Token(MatrixT, std::make_unique<Matrix<double>>(a)));
+    postfix.push_back(Token(Number, 2.0));
+    postfix.push_back(Token(Mod));
+    std::unordered_map<std::string, Token> vars;
+    EXPECT_THROW(Evaluator::Evaluate(postfix, vars), std::invalid_argument);
+}
+
+// ============================================================
+// Variable operations via Evaluator
+// ============================================================
+
+TEST(EvaluatorEvaluate, VariableAssignment) {
+    // x = 5  →  postfix: Variable(x) 5 Assignment
+    std::unordered_map<std::string, Token> vars;
+    std::vector<Token> postfix;
+    postfix.push_back(Token("x"));
+    postfix.push_back(Token(Number, 5.0));
+    postfix.push_back(Token(Assignment));
+    auto result = Evaluator::Evaluate(postfix, vars);
+    EXPECT_EQ(result.type, Variable);
+    EXPECT_DOUBLE_EQ(std::get<double>(result.data), 5.0);
+    // Variable should now be stored
+    ASSERT_TRUE(vars.contains("x"));
+    EXPECT_DOUBLE_EQ(std::get<double>(vars.at("x").data), 5.0);
+}
+
+TEST(EvaluatorEvaluate, VariableLookup) {
+    // Evaluate x + 3 when x = 10
+    std::unordered_map<std::string, Token> vars;
+    vars.insert_or_assign("x", Token("x", 10.0));
+
+    std::vector<Token> postfix;
+    postfix.push_back(Token("x"));
+    postfix.push_back(Token(Number, 3.0));
+    postfix.push_back(Token(Add));
+    auto result = Evaluator::Evaluate(postfix, vars);
+    EXPECT_DOUBLE_EQ(std::get<double>(result.data), 13.0);
+}
+
+TEST(EvaluatorEvaluate, UndefinedVariableThrows) {
+    // Using a variable that doesn't exist should throw
+    std::unordered_map<std::string, Token> vars;
+    std::vector<Token> postfix;
+    postfix.push_back(Token("undefined_var"));
+    postfix.push_back(Token(Number, 3.0));
+    postfix.push_back(Token(Add));
+    EXPECT_THROW(Evaluator::Evaluate(postfix, vars), std::runtime_error);
+}
+
+TEST(EvaluatorEvaluate, VariableReassignment) {
+    // Assign x = 5, then reassign x = 10
+    std::unordered_map<std::string, Token> vars;
+
+    // First assignment: x = 5
+    std::vector<Token> postfix1;
+    postfix1.push_back(Token("x"));
+    postfix1.push_back(Token(Number, 5.0));
+    postfix1.push_back(Token(Assignment));
+    Evaluator::Evaluate(postfix1, vars);
+    EXPECT_DOUBLE_EQ(std::get<double>(vars.at("x").data), 5.0);
+
+    // Reassignment: x = 10
+    std::vector<Token> postfix2;
+    postfix2.push_back(Token("x"));
+    postfix2.push_back(Token(Number, 10.0));
+    postfix2.push_back(Token(Assignment));
+    Evaluator::Evaluate(postfix2, vars);
+    EXPECT_DOUBLE_EQ(std::get<double>(vars.at("x").data), 10.0);
+}
+
+TEST(EvaluatorEvaluate, MultipleVariables) {
+    // x = 3, y = 4, then evaluate x + y
+    std::unordered_map<std::string, Token> vars;
+    vars.insert_or_assign("x", Token("x", 3.0));
+    vars.insert_or_assign("y", Token("y", 4.0));
+
+    std::vector<Token> postfix;
+    postfix.push_back(Token("x"));
+    postfix.push_back(Token("y"));
+    postfix.push_back(Token(Add));
+    auto result = Evaluator::Evaluate(postfix, vars);
+    EXPECT_DOUBLE_EQ(std::get<double>(result.data), 7.0);
 }

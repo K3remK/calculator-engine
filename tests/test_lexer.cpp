@@ -4,7 +4,8 @@
 
 // Helper: collect token types from a tokenized string
 static std::vector<TokenType> tokenTypes(std::string_view input) {
-    auto tokens = Lexer::Tokenize(input);
+    std::unordered_map<std::string, Token> vars;
+    auto tokens = Lexer::Tokenize(input, vars);
     std::vector<TokenType> types;
     types.reserve(tokens.size());
     for (const auto& t : tokens)
@@ -17,27 +18,31 @@ static std::vector<TokenType> tokenTypes(std::string_view input) {
 // ============================================================
 
 TEST(LexerTokenize, SingleInteger) {
-    auto tokens = Lexer::Tokenize("42");
+    std::unordered_map<std::string, Token> vars;
+    auto tokens = Lexer::Tokenize("42", vars);
     ASSERT_EQ(tokens.size(), 1);
     EXPECT_EQ(tokens[0].type, Number);
     EXPECT_DOUBLE_EQ(std::get<double>(tokens[0].data), 42.0);
 }
 
 TEST(LexerTokenize, DecimalNumber) {
-    auto tokens = Lexer::Tokenize("3.14");
+    std::unordered_map<std::string, Token> vars;
+    auto tokens = Lexer::Tokenize("3.14", vars);
     ASSERT_EQ(tokens.size(), 1);
     EXPECT_EQ(tokens[0].type, Number);
     EXPECT_NEAR(std::get<double>(tokens[0].data), 3.14, 1e-9);
 }
 
 TEST(LexerTokenize, MultipleDigitInteger) {
-    auto tokens = Lexer::Tokenize("12345");
+    std::unordered_map<std::string, Token> vars;
+    auto tokens = Lexer::Tokenize("12345", vars);
     ASSERT_EQ(tokens.size(), 1);
     EXPECT_DOUBLE_EQ(std::get<double>(tokens[0].data), 12345.0);
 }
 
 TEST(LexerTokenize, ZeroValue) {
-    auto tokens = Lexer::Tokenize("0");
+    std::unordered_map<std::string, Token> vars;
+    auto tokens = Lexer::Tokenize("0", vars);
     ASSERT_EQ(tokens.size(), 1);
     EXPECT_DOUBLE_EQ(std::get<double>(tokens[0].data), 0.0);
 }
@@ -105,7 +110,8 @@ TEST(LexerTokenize, LogLnLogBaseAbsFunctions) {
 }
 
 TEST(LexerTokenize, PiConstant) {
-    auto tokens = Lexer::Tokenize("pi");
+    std::unordered_map<std::string, Token> vars;
+    auto tokens = Lexer::Tokenize("pi", vars);
     ASSERT_EQ(tokens.size(), 1);
     EXPECT_EQ(tokens[0].type, PI);
     EXPECT_DOUBLE_EQ(std::get<double>(tokens[0].data), M_PI);
@@ -116,7 +122,8 @@ TEST(LexerTokenize, PiConstant) {
 // ============================================================
 
 TEST(LexerTokenize, WhitespaceIsSkipped) {
-    auto tokens = Lexer::Tokenize("  1  +  2  ");
+    std::unordered_map<std::string, Token> vars;
+    auto tokens = Lexer::Tokenize("  1  +  2  ", vars);
     ASSERT_EQ(tokens.size(), 3);
     EXPECT_EQ(tokens[0].type, Number);
     EXPECT_EQ(tokens[1].type, Add);
@@ -174,13 +181,63 @@ TEST(LexerTokenize, LnExpression) {
 // ============================================================
 
 TEST(LexerTokenize, InvalidCharacterThrows) {
-    EXPECT_THROW(Lexer::Tokenize("@"), std::invalid_argument);
-    EXPECT_THROW(Lexer::Tokenize("2 & 3"), std::invalid_argument);
+    std::unordered_map<std::string, Token> vars;
+    EXPECT_THROW(Lexer::Tokenize("@", vars), std::invalid_argument);
+    EXPECT_THROW(Lexer::Tokenize("2 & 3", vars), std::invalid_argument);
 }
 
-TEST(LexerTokenize, InvalidIdentifierThrows) {
-    EXPECT_THROW(Lexer::Tokenize("foo"), std::out_of_range);
-    EXPECT_THROW(Lexer::Tokenize("xyz"), std::out_of_range);
+// ============================================================
+// Variable tokenization
+// ============================================================
+
+TEST(LexerTokenize, UnknownIdentifierProducesVariable) {
+    // Unknown identifiers are now Variable tokens, not errors
+    std::unordered_map<std::string, Token> vars;
+    auto tokens = Lexer::Tokenize("foo", vars);
+    ASSERT_EQ(tokens.size(), 1);
+    EXPECT_EQ(tokens[0].type, Variable);
+    ASSERT_NE(tokens[0].variable_name, nullptr);
+    EXPECT_EQ(*tokens[0].variable_name, "foo");
+}
+
+TEST(LexerTokenize, MultipleVariableNames) {
+    std::unordered_map<std::string, Token> vars;
+    auto tokens = Lexer::Tokenize("xyz", vars);
+    ASSERT_EQ(tokens.size(), 1);
+    EXPECT_EQ(tokens[0].type, Variable);
+    EXPECT_EQ(*tokens[0].variable_name, "xyz");
+}
+
+TEST(LexerTokenize, VariableInExpression) {
+    // x + 3  →  Variable, Add, Number
+    auto types = tokenTypes("x + 3");
+    std::vector<TokenType> expected = {Variable, Add, Number};
+    EXPECT_EQ(types, expected);
+}
+
+TEST(LexerTokenize, AssignmentExpression) {
+    // x = 5  →  Variable, Assignment, Number
+    auto types = tokenTypes("x = 5");
+    std::vector<TokenType> expected = {Variable, Assignment, Number};
+    EXPECT_EQ(types, expected);
+}
+
+TEST(LexerTokenize, VariableWithFunction) {
+    // sin(x)  →  Sin, LeftParen, Variable, RightParen
+    auto types = tokenTypes("sin(x)");
+    std::vector<TokenType> expected = {Sin, LeftParen, Variable, RightParen};
+    EXPECT_EQ(types, expected);
+}
+
+TEST(LexerTokenize, MultipleVariablesInExpression) {
+    // x + y * z  →  Variable, Add, Variable, Mul, Variable
+    auto types = tokenTypes("x + y * z");
+    std::vector<TokenType> expected = {Variable, Add, Variable, Mul, Variable};
+    EXPECT_EQ(types, expected);
+}
+
+TEST(LexerTokenize, AssignmentOperator) {
+    EXPECT_EQ(tokenTypes("="), std::vector<TokenType>({Assignment}));
 }
 
 // ============================================================
@@ -188,10 +245,11 @@ TEST(LexerTokenize, InvalidIdentifierThrows) {
 // ============================================================
 
 TEST(LexerTokenize, MatrixLiteralSpaces) {
-    auto tokens = Lexer::Tokenize("[1 2; 3 4]");
+    std::unordered_map<std::string, Token> vars;
+    auto tokens = Lexer::Tokenize("[1 2; 3 4]", vars);
     ASSERT_EQ(tokens.size(), 1u);
     EXPECT_EQ(tokens[0].type, MatrixT);
-    auto& m = std::get<Matrix<double>>(tokens[0].data);
+    auto& m = *std::get<std::unique_ptr<Matrix<double>>>(tokens[0].data);
     EXPECT_EQ(m.GetM(), 2u);
     EXPECT_EQ(m.GetN(), 2u);
     EXPECT_DOUBLE_EQ(m[0][0], 1.0);
@@ -201,33 +259,37 @@ TEST(LexerTokenize, MatrixLiteralSpaces) {
 }
 
 TEST(LexerTokenize, MatrixLiteralCommas) {
-    auto tokens = Lexer::Tokenize("[1, 2; 3, 4]");
+    std::unordered_map<std::string, Token> vars;
+    auto tokens = Lexer::Tokenize("[1, 2; 3, 4]", vars);
     ASSERT_EQ(tokens.size(), 1u);
     EXPECT_EQ(tokens[0].type, MatrixT);
-    auto& m = std::get<Matrix<double>>(tokens[0].data);
+    auto& m = *std::get<std::unique_ptr<Matrix<double>>>(tokens[0].data);
     EXPECT_DOUBLE_EQ(m[0][0], 1.0);
     EXPECT_DOUBLE_EQ(m[1][1], 4.0);
 }
 
 TEST(LexerTokenize, MatrixColumnVector) {
-    auto tokens = Lexer::Tokenize("[1; 2; 3]");
+    std::unordered_map<std::string, Token> vars;
+    auto tokens = Lexer::Tokenize("[1; 2; 3]", vars);
     ASSERT_EQ(tokens.size(), 1u);
-    auto& m = std::get<Matrix<double>>(tokens[0].data);
+    auto& m = *std::get<std::unique_ptr<Matrix<double>>>(tokens[0].data);
     EXPECT_EQ(m.GetM(), 3u);
     EXPECT_EQ(m.GetN(), 1u);
 }
 
 TEST(LexerTokenize, MatrixRowVector) {
-    auto tokens = Lexer::Tokenize("[1 2 3]");
+    std::unordered_map<std::string, Token> vars;
+    auto tokens = Lexer::Tokenize("[1 2 3]", vars);
     ASSERT_EQ(tokens.size(), 1u);
-    auto& m = std::get<Matrix<double>>(tokens[0].data);
+    auto& m = *std::get<std::unique_ptr<Matrix<double>>>(tokens[0].data);
     EXPECT_EQ(m.GetM(), 1u);
     EXPECT_EQ(m.GetN(), 3u);
 }
 
 TEST(LexerTokenize, MatrixWithOperator) {
     // [1 2; 3 4] * [5; 6] should produce: MatrixT Mul MatrixT
-    auto tokens = Lexer::Tokenize("[1 2; 3 4] * [5; 6]");
+    std::unordered_map<std::string, Token> vars;
+    auto tokens = Lexer::Tokenize("[1 2; 3 4] * [5; 6]", vars);
     ASSERT_EQ(tokens.size(), 3u);
     EXPECT_EQ(tokens[0].type, MatrixT);
     EXPECT_EQ(tokens[1].type, Mul);
@@ -235,7 +297,8 @@ TEST(LexerTokenize, MatrixWithOperator) {
 }
 
 TEST(LexerTokenize, InvMulOperator) {
-    auto tokens = Lexer::Tokenize("[1 2; 3 4] \\ [5; 6]");
+    std::unordered_map<std::string, Token> vars;
+    auto tokens = Lexer::Tokenize("[1 2; 3 4] \\ [5; 6]", vars);
     ASSERT_EQ(tokens.size(), 3u);
     EXPECT_EQ(tokens[0].type, MatrixT);
     EXPECT_EQ(tokens[1].type, InvMul);
@@ -247,13 +310,16 @@ TEST(LexerTokenize, InvMulOperator) {
 // ============================================================
 
 TEST(LexerTokenize, EmptyMatrixThrows) {
-    EXPECT_THROW(Lexer::Tokenize("[]"), std::invalid_argument);
+    std::unordered_map<std::string, Token> vars;
+    EXPECT_THROW(Lexer::Tokenize("[]", vars), std::invalid_argument);
 }
 
 TEST(LexerTokenize, MalformedMatrixEmptyRowThrows) {
-    EXPECT_THROW(Lexer::Tokenize("[;1]"), std::invalid_argument);
+    std::unordered_map<std::string, Token> vars;
+    EXPECT_THROW(Lexer::Tokenize("[;1]", vars), std::invalid_argument);
 }
 
 TEST(LexerTokenize, MalformedMatrixEmptyCommaThrows) {
-    EXPECT_THROW(Lexer::Tokenize("[,1;2]"), std::invalid_argument);
+    std::unordered_map<std::string, Token> vars;
+    EXPECT_THROW(Lexer::Tokenize("[,1;2]", vars), std::invalid_argument);
 }

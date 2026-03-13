@@ -25,6 +25,15 @@ TEST(TokenIsOperator, ReturnsFalseForNonOperators) {
     EXPECT_FALSE(Token(Percent).IsOperator());
 }
 
+TEST(TokenIsOperator, VariableIsNotOperator) {
+    EXPECT_FALSE(Token("x").IsOperator());
+}
+
+TEST(TokenIsOperator, AssignmentIsNotArithmeticOperator) {
+    // Assignment is in InfixOperators but not in IsOperator()
+    EXPECT_FALSE(Token(Assignment).IsOperator());
+}
+
 // ============================================================
 // Token::IsFunction()
 // ============================================================
@@ -53,6 +62,10 @@ TEST(TokenIsFunction, ReturnsFalseForNonFunctions) {
     EXPECT_FALSE(Token(UnaryPlus).IsFunction());
 }
 
+TEST(TokenIsFunction, VariableIsNotFunction) {
+    EXPECT_FALSE(Token("myVar").IsFunction());
+}
+
 // ============================================================
 // Token::GetOperatorInfo() — precedence & associativity
 // ============================================================
@@ -75,6 +88,13 @@ TEST(TokenGetOperatorInfo, PrecedenceLevels) {
     EXPECT_EQ(Token(Ln).GetOperatorInfo().precedence, 3);
     EXPECT_EQ(Token(LogBase).GetOperatorInfo().precedence, 3);
     EXPECT_EQ(Token(Abs).GetOperatorInfo().precedence, 3);
+}
+
+TEST(TokenGetOperatorInfo, AssignmentPrecedence) {
+    // Assignment has lowest precedence (-1)
+    EXPECT_EQ(Token(Assignment).GetOperatorInfo().precedence, -1);
+    EXPECT_TRUE(Token(Assignment).GetOperatorInfo().isLeftAssociative);
+    EXPECT_EQ(Token(Assignment).GetOperatorInfo().expectedArgc, 2);
 }
 
 TEST(TokenGetOperatorInfo, Associativity) {
@@ -125,4 +145,97 @@ TEST(TokenToString, NumberIncludesValue) {
     EXPECT_EQ(result, "42");
 }
 
+TEST(TokenToString, AssignmentSymbol) {
+    EXPECT_EQ(Token(Assignment).toString(), "=");
+}
 
+TEST(TokenToString, EulerConstant) {
+    EXPECT_EQ(Token(Euler).toString(), "e");
+}
+
+TEST(TokenToString, PiConstant) {
+    EXPECT_EQ(Token(PI, M_PI).toString(), "π");
+}
+
+// ============================================================
+// Variable Token construction and toString()
+// ============================================================
+
+TEST(TokenVariable, ConstructionFromString) {
+    Token t("myVar");
+    EXPECT_EQ(t.type, Variable);
+    ASSERT_NE(t.variable_name, nullptr);
+    EXPECT_EQ(*t.variable_name, "myVar");
+}
+
+TEST(TokenVariable, ConstructionWithDoubleValue) {
+    Token t("x", 5.0);
+    EXPECT_EQ(t.type, Variable);
+    ASSERT_NE(t.variable_name, nullptr);
+    EXPECT_EQ(*t.variable_name, "x");
+    EXPECT_DOUBLE_EQ(std::get<double>(t.data), 5.0);
+}
+
+TEST(TokenVariable, ToStringIncludesNameAndValue) {
+    Token t("x", 42.0);
+    std::string s = t.toString();
+    // Variable toString format: "name(value)"
+    EXPECT_NE(s.find("x"), std::string::npos);
+    EXPECT_NE(s.find("42"), std::string::npos);
+}
+
+TEST(TokenVariable, NonOperatorTokenHasNullVariableName) {
+    Token t(Number, 5.0);
+    EXPECT_EQ(t.variable_name, nullptr);
+}
+
+// ============================================================
+// Token copy and move semantics with unique_ptr
+// ============================================================
+
+TEST(TokenCopyMove, CopyConstructsDouble) {
+    Token original(Number, 42.0);
+    Token copy(original);
+    EXPECT_EQ(copy.type, Number);
+    EXPECT_DOUBLE_EQ(std::get<double>(copy.data), 42.0);
+}
+
+TEST(TokenCopyMove, CopyConstructsVariable) {
+    Token original("x", 5.0);
+    Token copy(original);
+    EXPECT_EQ(copy.type, Variable);
+    ASSERT_NE(copy.variable_name, nullptr);
+    EXPECT_EQ(*copy.variable_name, "x");
+    EXPECT_DOUBLE_EQ(std::get<double>(copy.data), 5.0);
+    // Ensure deep copy — different pointers
+    EXPECT_NE(copy.variable_name.get(), original.variable_name.get());
+}
+
+TEST(TokenCopyMove, CopyConstructsMatrix) {
+    Matrix<double> m = {{1, 2}, {3, 4}};
+    Token original(MatrixT, std::make_unique<Matrix<double>>(m));
+    Token copy(original);
+    EXPECT_EQ(copy.type, MatrixT);
+    auto& copyMatrix = *std::get<std::unique_ptr<Matrix<double>>>(copy.data);
+    EXPECT_DOUBLE_EQ(copyMatrix[0][0], 1.0);
+    EXPECT_DOUBLE_EQ(copyMatrix[1][1], 4.0);
+}
+
+TEST(TokenCopyMove, MoveConstructsVariable) {
+    Token original("y", 7.0);
+    Token moved(std::move(original));
+    EXPECT_EQ(moved.type, Variable);
+    ASSERT_NE(moved.variable_name, nullptr);
+    EXPECT_EQ(*moved.variable_name, "y");
+    EXPECT_DOUBLE_EQ(std::get<double>(moved.data), 7.0);
+}
+
+TEST(TokenCopyMove, CopyAssignmentOperator) {
+    Token original("x", 10.0);
+    Token target(Number, 0.0);
+    target = original;
+    EXPECT_EQ(target.type, Variable);
+    ASSERT_NE(target.variable_name, nullptr);
+    EXPECT_EQ(*target.variable_name, "x");
+    EXPECT_DOUBLE_EQ(std::get<double>(target.data), 10.0);
+}
