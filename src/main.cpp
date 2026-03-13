@@ -46,7 +46,7 @@ int main()
         "sin(0) + cos(0)",
         "([1 2 3; 1 2 3; 1 2 3] * [1 2 3;1 2 3;1 2 3]) / 10",
         "([1, 2 3; 1, 2, 3; 1, 2, 3] * [1, 2, 3;1, 2, 3;1, 2, 3]) / 10",
-        //"[1 2 3; 1 2 3; 1 2 3]^1000000",
+        "[1 2 3; 1 2 3; 1 2 3]^1000000",
         "[1 -2 3; 2 1 -1; -1 3 2] \\ [7; 2; -3]",                              // x = [2; -1; 1]
         "[2 1; 5 3] \\ [8; 21]",                                                 // x = [3; 2]
         "[2 0 0; 0 3 0; 0 0 4] \\ [8; 9; 8]",                                   // x = [4; 3; 2]
@@ -105,6 +105,8 @@ int main()
     };
     const Matrix<double> b2 = {{-10}, {0}, {0}, {0}};
 
+    auto demo = std::make_unique<Matrix<double>>(A);
+
     //PrettyPrint::print(std::vector(1, Token(MatrixT, x)));
     //PrettyPrint::print(std::vector(1,  Token(MatrixT, Matrix<double>::Solve(A, b2) * 1000)));
 
@@ -157,14 +159,7 @@ int main()
             std::vector<Token> postfixTokens = Parser::ToPostfix(infixTokens);
             infixTokens.emplace_back(Equality);
             auto result = Evaluator::Evaluate(postfixTokens, variables);
-            std::visit([&infixTokens](auto&& a) {
-                using Type = std::decay_t<decltype(a)>;
-                if constexpr (std::is_same_v<Type, double>) {
-                    infixTokens.emplace_back(Number, a);
-                } else if constexpr (std::is_same_v<Type, Matrix<double>>) {
-                    infixTokens.emplace_back(MatrixT, a);
-                }
-            }, result.data);
+            infixTokens.push_back(result);
             std::cout << "Equation: " << count++ << std::endl;
             std::cout << "============================================="<< std::endl;
             PrettyPrint::print(infixTokens);

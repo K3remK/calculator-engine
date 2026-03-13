@@ -123,7 +123,7 @@ struct Token {
             if constexpr (std::is_same_v<Type, double>) {
                 data = a;
             } else if constexpr (std::is_same_v<Type, std::unique_ptr<Matrix<double>>>) {
-                data = std::make_unique<Matrix<double>>(*a);
+                data = a ? std::make_unique<Matrix<double>>(*a) : nullptr;
             }
         }, other.data);
         argc = other.argc;
@@ -139,7 +139,7 @@ struct Token {
             if constexpr (std::is_same_v<Type, double>) {
                 data = a;
             } else if constexpr (std::is_same_v<Type, std::unique_ptr<Matrix<double>>>) {
-                data = std::make_unique<Matrix<double>>(*a);
+                data = a ? std::make_unique<Matrix<double>>(*a) : nullptr;
             }
         }, other.data);
         argc = other.argc;
@@ -159,7 +159,7 @@ struct Token {
         return operatorMap.at(type);
     }
 
-    [[nodiscard]] std::string toString() const {
+        [[nodiscard]] std::string toString() const {
         std::ostringstream os;
         switch (type) {
             case Add      :
@@ -203,7 +203,15 @@ struct Token {
                 break;
             case Number:
             case MatrixT:
-                std::visit([&os](auto&& a) { os << std::setprecision(15) << a; }, data);
+                std::visit([&os](auto&& a) {
+                    using T = std::decay_t<decltype(a)>;
+                    if constexpr (std::is_same_v<T, double>) {
+                        os << std::setprecision(10) << a;
+                    } else if constexpr (std::is_same_v<T, std::unique_ptr<Matrix<double>>>) {
+                        if (a) os << *a;
+                        else os << "<null-matrix>";
+                    }
+                }, data);
                 break;
             case LeftParen :
                 os << "(";

@@ -26,6 +26,7 @@ private:
     static void printEquation(const std::vector<TextBlock>& blocks);
     [[nodiscard]] TextBlock operatorToBlock(const std::string& op) const;
     static TextBlock matrixToBlock(const std::unique_ptr<Matrix<double>>& m);
+    static std::string formatDouble(double value);
 };
 
 

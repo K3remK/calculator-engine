@@ -202,20 +202,24 @@ Token Evaluator::evalBinary(const TokenType op, const Token &left, const Token &
             return evaluateMod(left, right);
         case Pow:
             return std::visit(overloaded{
-                [](const Matrix<double>& m, const double a) -> Token {
-                    Matrix<double> result = m.Identity();
+                [](const std::unique_ptr<Matrix<double>>& m, const double a) -> Token {
+                    Matrix<double> result = m->Identity();
                     for (int i = 0; i < a; i++)
-                        result = result * m;
+                        result = result * *m;
                     return Token(MatrixT, std::make_unique<Matrix<double>>(result));
                 },
-                [](const double a, const double b) -> Token { return Token(Number, std::pow(a, b)); },
+                [](const double a, const double b) -> Token {
+                    return Token(Number, std::pow(a, b));
+                },
                 [](auto&&, auto&&) -> Token {
                     throw std::invalid_argument("Pow not supported for this type");
                 }
             }, left.data, right.data);
         case LogBase:
             return std::visit(overloaded{
-                [](const double a, const double b) -> Token { return Token(Number, std::log(a) / std::log(b)); },
+                [](const double a, const double b) -> Token {
+                    return Token(Number, std::log(a) / std::log(b));
+                },
                 [](auto&&, auto&&) -> Token {
                     throw std::invalid_argument("LogBase not supported for this type");
                 }
@@ -223,12 +227,12 @@ Token Evaluator::evalBinary(const TokenType op, const Token &left, const Token &
         case Assignment: {
             if (!(left.type & Variable)) throw std::invalid_argument("Invalid assignment: " + left.toString());
             if (!(right.type & Numbers)) throw std::invalid_argument("Invalid assignment: " + right.toString());
-            std::visit([&]<typename T0>(T0&& a) {
+            return std::visit([&]<typename T0>(T0&& a) {
                 using T = std::decay_t<T0>;
                 if constexpr (std::is_same_v<T, std::unique_ptr<Matrix<double>>>) {
-                    Token(*left.variable_name, std::make_unique<Matrix<double>>(*a));
+                    return Token(*left.variable_name, std::make_unique<Matrix<double>>(*a));
                 } else {
-                    Token(*left.variable_name, a);
+                    return Token(*left.variable_name, a);
                 }
             }, right.data);
         }
@@ -249,7 +253,7 @@ Token Evaluator::evalUnary(const TokenType op, const Token &operand) {
                     return Token(Number, a * 0.01);
                 throw std::invalid_argument("Sin only supports double/int");
             case UnaryMinus:
-                std::visit([&]<typename T3>(T3&& data) {
+                return std::visit([&]<typename T3>(T3&& data) {
                     using T2 = std::decay_t<T3>;
                     if constexpr (std::is_same_v<T2, std::unique_ptr<Matrix<double>>>) {
                         return Token(operand.type, std::make_unique<Matrix<double>>(-(*data)));
@@ -258,7 +262,7 @@ Token Evaluator::evalUnary(const TokenType op, const Token &operand) {
                     }
                 }, operand.data);
             case UnaryPlus:
-                std::visit([&]<typename T2>(T2&& data) {
+                return std::visit([&]<typename T2>(T2&& data) {
                     using T0 = std::decay_t<T2>;
                     if constexpr (std::is_same_v<T0, std::unique_ptr<Matrix<double>>>) {
                         return Token(operand.type, std::make_unique<Matrix<double>>(*data));

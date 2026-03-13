@@ -4,22 +4,42 @@
 
 #include "PrettyPrint.h"
 #include <iostream>
+#include <sstream>
+
+std::string PrettyPrint::formatDouble(double value) {
+    std::ostringstream os;
+    os << std::setprecision(10) << value;
+    return os.str();
+}
 
 void PrettyPrint::print(const std::vector<Token> &tokens) {
-    // 1. First pass: Determine the global max height
+    bool hasMatrix = false;
     size_t maxHeight = 1;
-    for (auto& t : tokens) {
+
+    for (const auto& t : tokens) {
         if (t.type & MatrixT) {
-            maxHeight = std::max(maxHeight, std::get<std::unique_ptr<Matrix<double>>>(t.data)->GetM());
+            hasMatrix = true;
+            const auto& matrix = std::get<std::unique_ptr<Matrix<double>>>(t.data);
+            if (matrix)
+                maxHeight = std::max(maxHeight, matrix->GetM());
         }
     }
 
-    // 2. Second pass: Generate blocks using the global maxHeight
-    std::vector<TextBlock> blocks;
-    PrettyPrint pp;
-    pp.height = maxHeight; // Set the instance height for operators
+    if (!hasMatrix) {
+        for (size_t i = 0; i < tokens.size(); ++i) {
+            if (i > 0) std::cout << ' ';
+            std::cout << tokens[i].toString();
+        }
+        std::cout << "\n";
+        return;
+    }
 
-    for (auto& t : tokens) {
+    std::vector<TextBlock> blocks;
+    blocks.reserve(tokens.size());
+    PrettyPrint pp;
+    pp.height = maxHeight;
+
+    for (const auto& t : tokens) {
         if (t.type & MatrixT) {
             blocks.emplace_back(matrixToBlock(std::get<std::unique_ptr<Matrix<double>>>(t.data)));
         } else {
@@ -36,9 +56,6 @@ void PrettyPrint::printEquation(const std::vector<TextBlock> &blocks) {
 
     for (size_t i = 0; i < maxHeight; ++i) {
         for (const auto& b : blocks) {
-            // VERTICAL CENTERING LOGIC
-            // Calculate an offset so short matrices sit in the middle of tall ones
-
             if (const size_t offset = (maxHeight - b.height()) / 2; i >= offset && (i - offset) < b.height()) {
                 std::cout << b.lines[i - offset];
             } else {
@@ -52,7 +69,7 @@ void PrettyPrint::printEquation(const std::vector<TextBlock> &blocks) {
 TextBlock PrettyPrint::operatorToBlock(const std::string& op) const {
     TextBlock block;
     const size_t middle = height / 2;
-    for (int i = 0; i < height; ++i) {
+    for (size_t i = 0; i < height; ++i) {
         block.lines.push_back(i == middle ? " " + op + " " : std::string(op.length() + 2, ' '));
     }
     return block;
@@ -60,34 +77,33 @@ TextBlock PrettyPrint::operatorToBlock(const std::string& op) const {
 
 TextBlock PrettyPrint::matrixToBlock(const std::unique_ptr<Matrix<double>> &m) {
     TextBlock block;
-    const auto& data = m->GetData();
-    if (data.empty()) return block;
+    if (!m) {
+        block.lines.push_back("[ null ]");
+        return block;
+    }
 
-    // 1. Find the widest number for the column alignment
+    const auto& data = m->GetData();
+    if (data.empty()) {
+        block.lines.push_back("[ ]");
+        return block;
+    }
+
     int max_w = 0;
-    for (auto& row : data) {
+    for (const auto& row : data) {
         for (const double v : row) {
-            std::stringstream ss;
-            ss << v; // Using string stream to avoid the "1.000000" overkill
-            max_w = std::max(max_w, static_cast<int>(ss.str().length()));
+            const std::string s = formatDouble(v);
+            max_w = std::max(max_w, static_cast<int>(s.length()));
         }
     }
 
-    // 2. Build each row with brackets [ ]
     for (const auto& row : data) {
-        std::string line = "[ "; // Opening bracket
+        std::string line = "[ ";
         for (size_t i = 0; i < row.size(); ++i) {
-            std::stringstream ss;
-            ss << row[i];
-            std::string s = ss.str();
-
-            // Right-align numbers within the column width
-            line += std::string(max_w - s.length(), ' ') + s;
-
-            // Add spacing between columns, but not after the last one
-            if (i < row.size() - 1) line += "  ";
+            const std::string s = formatDouble(row[i]);
+            line += std::string(max_w - static_cast<int>(s.length()), ' ') + s;
+            if (i + 1 < row.size()) line += "  ";
         }
-        line += " ]"; // Closing bracket
+        line += " ]";
         block.lines.push_back(line);
     }
     return block;
